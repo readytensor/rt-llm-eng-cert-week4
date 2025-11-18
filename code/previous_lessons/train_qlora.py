@@ -4,6 +4,7 @@ Fully integrated with shared utilities and config.yaml.
 """
 
 import os
+import time
 import wandb
 import torch
 from dotenv import load_dotenv
@@ -170,8 +171,10 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     )
 
     print("\n🎯 Starting LoRA fine-tuning...")
+    start_time = time.time()
     trainer.train()
-    print("\n✅ Training complete!")
+    end_time = time.time()
+    print(f"\n✅ Training complete! Time taken: {end_time - start_time:.2f} seconds")
 
     if save_dir is None:
         save_dir = os.path.join(output_dir, "lora_adapters")
@@ -182,6 +185,9 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     model.save_pretrained(save_dir)
     tokenizer.save_pretrained(save_dir)
     print(f"💾 Saved LoRA adapters to {save_dir}")
+
+    with open(os.path.join(save_dir, "training_time.txt"), "w") as f:
+        f.write(f"Training time: {end_time - start_time:.2f} seconds")
 
 
 # ---------------------------------------------------------------------------
