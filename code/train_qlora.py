@@ -163,8 +163,8 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         logging_steps=cfg.get("logging_steps", 25),
         save_total_limit=cfg.get("save_total_limit", 2),
         report_to="wandb",
-        gradient_checkpointing_kwargs={"use_reentrant": False},  # Use non-reentrant mode for DDP compatibility
-
+        gradient_checkpointing=cfg.get("gradient_checkpointing", False),
+        gradient_checkpointing_kwargs=cfg.get("gradient_checkpointing_kwargs", None),
     )
 
     trainer = Trainer(
@@ -210,7 +210,11 @@ def main(cfg_path: str = None):
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=True, padding_side="right", device_map=accelerator.local_process_index
+        cfg,
+        use_4bit=True,
+        use_lora=True,
+        padding_side="right",
+        device_map=accelerator.local_process_index,
     )
 
     # Initialize W&B

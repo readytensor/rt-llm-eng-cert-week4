@@ -38,12 +38,15 @@ def select_subset(dataset, n_samples, seed=42):
     """
     if n_samples == "all" or n_samples is None:
         return dataset
-    
+
     if n_samples > len(dataset):
-        print(f"Requested {n_samples} samples but only {len(dataset)} available. Using all samples.")
+        print(
+            f"Requested {n_samples} samples but only {len(dataset)} available. Using all samples."
+        )
         return dataset
-    
+
     return dataset.shuffle(seed=seed).select(range(n_samples))
+
 
 def load_and_prepare_dataset(cfg):
     """
@@ -70,7 +73,9 @@ def load_and_prepare_dataset(cfg):
         n_test = cfg.get("test_samples", "all")
         seed = cfg.get("seed", 42)
     else:
-        raise KeyError("Dataset configuration not found. Expected 'dataset' or 'datasets' key.")
+        raise KeyError(
+            "Dataset configuration not found. Expected 'dataset' or 'datasets' key."
+        )
 
     # -----------------------------------------------------------------------
     # Load or download full dataset
@@ -79,13 +84,13 @@ def load_and_prepare_dataset(cfg):
     local_path = os.path.join(DATASETS_DIR, dataset_name.replace("/", "_"))
 
     if os.path.exists(local_path):
-        print(f"📂 Loading dataset from local cache: {local_path}")
+        print(f"Loading dataset from local cache: {local_path}")
         dataset = load_from_disk(local_path)
     else:
         print(f"⬇️  Downloading dataset from Hugging Face: {dataset_name}")
         dataset = load_dataset(dataset_name)
         dataset.save_to_disk(local_path)
-        print(f"✅ Full dataset saved locally to: {local_path}")
+        print(f"Full dataset saved locally to: {local_path}")
 
     # -----------------------------------------------------------------------
     # Handle variations in split keys and select subsets dynamically
@@ -96,9 +101,10 @@ def load_and_prepare_dataset(cfg):
     val = select_subset(dataset[val_key], n_val, seed=seed)
     test = select_subset(dataset["test"], n_test, seed=seed)
 
-    print(f"📊 Loaded {len(train)} train / {len(val)} val / {len(test)} test samples (from full cache).")
+    print(
+        f"Loaded {len(train)} train / {len(val)} val / {len(test)} test samples (from full cache)."
+    )
     return train, val, test
-
 
 
 # ---------------------------------------------------------------------------

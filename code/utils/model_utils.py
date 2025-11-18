@@ -14,7 +14,11 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 
 def setup_model_and_tokenizer(
-    cfg, use_4bit: bool = None, use_lora: bool = None, padding_side: str = "right", device_map: str = "auto"
+    cfg,
+    use_4bit: bool = None,
+    use_lora: bool = None,
+    padding_side: str = "right",
+    device_map: str = "auto",
 ):
     """
     Load model, tokenizer, and apply quantization + LoRA config if specified.
@@ -82,7 +86,13 @@ def setup_model_and_tokenizer(
     # ------------------------------
     if apply_lora:
         print("Applying LoRA configuration...")
-        model = prepare_model_for_kbit_training(model)
+        model = prepare_model_for_kbit_training(
+            model,
+            use_gradient_checkpointing=cfg.get("gradient_checkpointing", False),
+            gradient_checkpointing_kwargs=cfg.get(
+                "gradient_checkpointing_kwargs", None
+            ),
+        )
         lora_cfg = LoraConfig(
             r=cfg.get("lora_r", 8),
             lora_alpha=cfg.get("lora_alpha", 16),
