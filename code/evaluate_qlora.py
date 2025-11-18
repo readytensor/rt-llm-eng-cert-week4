@@ -36,7 +36,10 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     )
 
     if adapter_dir is None:
-        adapter_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", "lora_adapters")
+        if cfg.get("save_dir", None) is None:
+            adapter_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", "lora_adapters")
+        else:
+            adapter_dir = os.path.join(OUTPUTS_DIR, cfg.get("save_dir"), "lora_adapters")
 
     else:
         adapter_dir = os.path.join(OUTPUTS_DIR, adapter_dir, "lora_adapters")
@@ -132,7 +135,7 @@ def main():
     cfg = load_config()
     scores, preds = evaluate_peft_model(cfg)
 
-    print("\n✅ Evaluation complete.")
+    print("Evaluation complete.")
     print("Sample prediction:\n")
     print(preds[0])
 
