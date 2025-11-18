@@ -27,8 +27,6 @@ from paths import OUTPUTS_DIR
 load_dotenv()
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-accelerator = Accelerator()
-
 
 # ---------------------------------------------------------------------------
 # Preprocessing
@@ -175,7 +173,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         data_collator=collator,
     )
 
-    print("\n🎯 Starting LoRA fine-tuning...")
+    print("\nStarting LoRA fine-tuning...")
     start_time = time.time()
     trainer.train()
     end_time = time.time()
@@ -189,7 +187,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     os.makedirs(save_dir, exist_ok=True)
     model.save_pretrained(save_dir)
     tokenizer.save_pretrained(save_dir)
-    print(f"💾 Saved LoRA adapters to {save_dir}")
+    print(f"Saved LoRA adapters to {save_dir}")
 
     with open(os.path.join(save_dir, "training_time.txt"), "w") as f:
         f.write(f"Training time: {end_time - start_time:.2f} seconds")
@@ -205,6 +203,8 @@ def main(cfg_path: str = None):
         cfg = load_config(cfg_path)
     else:
         cfg = load_config()
+
+    accelerator = Accelerator()
 
     # Load dataset
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
