@@ -163,6 +163,8 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         logging_steps=cfg.get("logging_steps", 25),
         save_total_limit=cfg.get("save_total_limit", 2),
         report_to="wandb",
+        gradient_checkpointing_kwargs={"use_reentrant": False},  # Use non-reentrant mode for DDP compatibility
+
     )
 
     trainer = Trainer(
