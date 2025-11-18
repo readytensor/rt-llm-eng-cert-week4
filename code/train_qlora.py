@@ -121,7 +121,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     """Tokenize datasets, configure Trainer, and run LoRA fine-tuning."""
     task_instruction = cfg["task_instruction"]
 
-    print("\n📚 Tokenizing datasets...")
+    print("\nTokenizing datasets...")
     tokenized_train = train_data.map(
         lambda e: preprocess_samples(
             e, tokenizer, task_instruction, cfg["sequence_len"]
@@ -174,7 +174,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     start_time = time.time()
     trainer.train()
     end_time = time.time()
-    print(f"\n✅ Training complete! Time taken: {end_time - start_time:.2f} seconds")
+    print(f"\nTraining complete! Time taken: {end_time - start_time:.2f} seconds")
 
     if save_dir is None:
         save_dir = os.path.join(output_dir, "lora_adapters")
@@ -205,7 +205,7 @@ def main(cfg_path: str = None):
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=True, padding_side="right", device_map=None
+        cfg, use_4bit=True, use_lora=True, padding_side="right", device_map={"": torch.cuda.current_device()}
     )
 
     # Initialize W&B

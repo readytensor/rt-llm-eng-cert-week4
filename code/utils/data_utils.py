@@ -40,7 +40,7 @@ def select_subset(dataset, n_samples, seed=42):
         return dataset
     
     if n_samples > len(dataset):
-        print(f"⚠️  Requested {n_samples} samples but only {len(dataset)} available. Using all samples.")
+        print(f"Requested {n_samples} samples but only {len(dataset)} available. Using all samples.")
         return dataset
     
     return dataset.shuffle(seed=seed).select(range(n_samples))

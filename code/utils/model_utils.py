@@ -51,7 +51,7 @@ def setup_model_and_tokenizer(
     # ------------------------------
     quant_cfg = None
     if load_in_4bit:
-        print("⚙️  Enabling 4-bit quantization...")
+        print("Enabling 4-bit quantization...")
         quant_cfg = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_quant_type=cfg.get("bnb_4bit_quant_type", "nf4"),
@@ -61,7 +61,7 @@ def setup_model_and_tokenizer(
             ),
         )
     else:
-        print("⚙️  Loading model in full precision (no quantization).")
+        print("Loading model in full precision (no quantization).")
 
     # ------------------------------
     # Model loading
@@ -81,7 +81,7 @@ def setup_model_and_tokenizer(
     # LoRA setup (optional)
     # ------------------------------
     if apply_lora:
-        print("🔧 Applying LoRA configuration...")
+        print("Applying LoRA configuration...")
         model = prepare_model_for_kbit_training(model)
         lora_cfg = LoraConfig(
             r=cfg.get("lora_r", 8),
@@ -94,7 +94,7 @@ def setup_model_and_tokenizer(
         model = get_peft_model(model, lora_cfg)
         model.print_trainable_parameters()
     else:
-        print("🔹 Skipping LoRA setup — using base model only.")
+        print("Skipping LoRA setup — using base model only.")
 
     return model, tokenizer
 
