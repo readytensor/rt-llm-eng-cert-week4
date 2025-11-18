@@ -14,7 +14,7 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
 
 def setup_model_and_tokenizer(
-    cfg, use_4bit: bool = None, use_lora: bool = None, padding_side: str = "right"
+    cfg, use_4bit: bool = None, use_lora: bool = None, padding_side: str = "right", device_map: str = "auto"
 ):
     """
     Load model, tokenizer, and apply quantization + LoRA config if specified.
@@ -69,7 +69,7 @@ def setup_model_and_tokenizer(
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         quantization_config=quant_cfg,
-        device_map="auto",
+        device_map=device_map,
         dtype=(
             torch.bfloat16
             if cfg.get("bf16", True) and torch.cuda.is_available()
