@@ -30,7 +30,7 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     # ----------------------------
     # Model & Tokenizer
     # ----------------------------
-    print("\n🚀 Loading base model...")
+    print("Loading base model...")
     model, tokenizer = setup_model_and_tokenizer(
         cfg, use_4bit=True, use_lora=False, padding_side="left"
     )
@@ -38,10 +38,14 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     if adapter_dir is None:
         adapter_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", "lora_adapters")
 
-    if not os.path.exists(adapter_dir):
-        raise FileNotFoundError(f"❌ LoRA adapter directory not found: {adapter_dir}")
+    else:
+        adapter_dir = os.path.join(OUTPUTS_DIR, adapter_dir, "lora_adapters")
 
-    print(f"🔧 Loading fine-tuned LoRA adapters from: {adapter_dir}")
+
+    if not os.path.exists(adapter_dir):
+        raise FileNotFoundError(f"LoRA adapter directory not found: {adapter_dir}")
+
+    print(f"Loading fine-tuned LoRA adapters from: {adapter_dir}")
     model = PeftModel.from_pretrained(model, adapter_dir)
     model.eval()
     tokenizer.padding_side = "left"
@@ -52,14 +56,14 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     # ----------------------------
     # Dataset
     # ----------------------------
-    print("\n📂 Loading dataset...")
+    print("\nLoading dataset...")
     _, val_data, _ = load_and_prepare_dataset(cfg)
-    print(f"✅ Validation set size: {len(val_data)} samples")
+    print(f"Validation set size: {len(val_data)} samples")
 
     # ----------------------------
     # Inference
     # ----------------------------
-    print("\n🧠 Generating summaries...")
+    print("\nGenerating summaries...")
     preds = generate_predictions(
         model=model,
         tokenizer=tokenizer,
@@ -71,10 +75,10 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     # ----------------------------
     # Evaluation
     # ----------------------------
-    print("\n📏 Computing ROUGE metrics...")
+    print("\nComputing ROUGE metrics...")
     scores = compute_rouge(preds, val_data)
 
-    print("\n📊 Evaluation Results:")
+    print("\nEvaluation Results:")
     print(f"  ROUGE-1: {scores['rouge1']:.2%}")
     print(f"  ROUGE-2: {scores['rouge2']:.2%}")
     print(f"  ROUGE-L: {scores['rougeL']:.2%}")
@@ -113,8 +117,8 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
             )
             f.write("\n")
 
-    print(f"\n💾 Saved results to {results_path}")
-    print(f"💾 Saved predictions to {preds_path}")
+    print(f"\nSaved results to {results_path}")
+    print(f"Saved predictions to {preds_path}")
 
     return scores, preds
 
