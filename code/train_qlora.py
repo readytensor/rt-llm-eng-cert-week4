@@ -13,6 +13,7 @@ from transformers import (
     TrainingArguments,
     Trainer,
 )
+from accelerate import Accelerator
 from utils.config_utils import load_config
 from utils.data_utils import load_and_prepare_dataset, build_messages_for_sample
 from utils.model_utils import setup_model_and_tokenizer
@@ -25,6 +26,8 @@ from paths import OUTPUTS_DIR
 
 load_dotenv()
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+accelerator = Accelerator()
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +208,7 @@ def main(cfg_path: str = None):
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=True, padding_side="right", device_map={"": torch.cuda.current_device()}
+        cfg, use_4bit=True, use_lora=True, padding_side="right", device_map=accelerator.local_process_index
     )
 
     # Initialize W&B
