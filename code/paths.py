@@ -7,3 +7,7 @@ CODE_DIR = os.path.join(ROOT_DIR, "code")
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 
 OUTPUTS_DIR = os.path.join(ROOT_DIR, "outputs")
+
+CONFIG_FILE_PATH = os.path.join(CODE_DIR, "config.yaml")
+
+DATASETS_DIR = os.path.join(DATA_DIR, "datasets")
