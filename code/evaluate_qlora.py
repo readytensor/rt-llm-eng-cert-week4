@@ -90,7 +90,10 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     # Save Outputs
     # ----------------------------
     if results_dir is None:
-        results_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
+        if cfg.get("save_dir", None) is None:
+            results_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
+        else:
+            results_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", cfg.get("save_dir"))
     os.makedirs(results_dir, exist_ok=True)
 
     results_path = os.path.join(results_dir, "eval_results.json")
