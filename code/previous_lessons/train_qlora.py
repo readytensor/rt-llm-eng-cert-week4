@@ -176,7 +176,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     if save_dir is None:
         save_dir = os.path.join(output_dir, "lora_adapters")
     else:
-        save_dir = os.path.join(save_dir, "lora_adapters")
+        save_dir = os.path.join(output_dir, save_dir, "lora_adapters")
 
     os.makedirs(save_dir, exist_ok=True)
     model.save_pretrained(save_dir)
