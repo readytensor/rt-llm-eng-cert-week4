@@ -189,7 +189,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     tokenizer.save_pretrained(save_dir)
     print(f"Saved LoRA adapters to {save_dir}")
 
-    with open(os.path.join(save_dir, "training_time.txt"), "w") as f:
+    with open(os.path.join(os.path.dirname(save_dir), "training_time.txt"), "w") as f:
         f.write(f"Training time: {end_time - start_time:.2f} seconds")
 
 
