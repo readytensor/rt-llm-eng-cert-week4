@@ -27,6 +27,8 @@ load_dotenv()
 def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     """Load base model, attach LoRA adapters, and evaluate."""
 
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     # ----------------------------
     # Model & Tokenizer
     # ----------------------------
