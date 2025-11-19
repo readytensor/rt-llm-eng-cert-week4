@@ -32,7 +32,8 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     # ----------------------------
     print("Loading base model...")
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=False, padding_side="left"
+        cfg, use_4bit=True, use_lora=False, padding_side="left", 
+        device_map=device
     )
 
     if adapter_dir is None:
