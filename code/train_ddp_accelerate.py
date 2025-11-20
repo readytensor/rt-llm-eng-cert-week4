@@ -154,11 +154,10 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=cfg["num_epochs"],
-        max_steps=cfg.get("max_steps", None),
+        max_steps=cfg.get("max_steps", 500),
         per_device_train_batch_size=cfg["batch_size"],
         per_device_eval_batch_size=cfg["batch_size"],
         gradient_accumulation_steps=cfg["gradient_accumulation_steps"],
-        gradient_checkpointing_kwargs={"use_reentrant": False},  # Critical for DDP
         learning_rate=float(cfg["learning_rate"]),
         lr_scheduler_type=cfg.get("lr_scheduler", "cosine"),
         warmup_steps=cfg.get("warmup_steps", 100),
@@ -169,6 +168,8 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         logging_steps=cfg.get("logging_steps", 25),
         save_total_limit=cfg.get("save_total_limit", 2),
         report_to="wandb",
+        gradient_checkpointing=cfg.get("gradient_checkpointing", False),
+        gradient_checkpointing_kwargs=cfg.get("gradient_checkpointing_kwargs", None),
     )
 
     trainer = Trainer(
