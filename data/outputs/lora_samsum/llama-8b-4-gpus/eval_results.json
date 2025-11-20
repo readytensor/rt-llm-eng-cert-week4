@@ -1,8 +1,0 @@
-{
-  "rouge1": 0.5303390755032257,
-  "rouge2": 0.3032557625155696,
-  "rougeL": 0.4538052363587527,
-  "num_samples": 200,
-  "base_model": "meta-llama/Llama-3.1-8B-Instruct",
-  "adapter_dir": "/workspace/rt-llm-eng-cert-week4/data/outputs/lora_samsum/llama-8b-4-gpus/lora_adapters"
-}

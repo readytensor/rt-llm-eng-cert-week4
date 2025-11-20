@@ -1,5 +1,6 @@
 """
 Fine-tune a Llama 3 model on SAMSum (or another dataset) using LoRA and quantization.
+Supports multi-GPU training with Distributed Data Parallelism via Accelerate.
 Fully integrated with shared utilities and config.yaml.
 """
 
@@ -8,6 +9,7 @@ import wandb
 import torch
 from dotenv import load_dotenv
 from torch.nn.utils.rnn import pad_sequence
+from accelerate import Accelerator
 from transformers import (
     TrainingArguments,
     Trainer,
@@ -15,7 +17,7 @@ from transformers import (
 from utils.config_utils import load_config
 from utils.data_utils import load_and_prepare_dataset, build_messages_for_sample
 from utils.model_utils import setup_model_and_tokenizer
-from paths import OUTPUTS_DIR
+from paths import OUTPUTS_DIR, ACCELERATE_DDP_OUTPUTS_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -139,13 +141,18 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
     collator = PaddingCollator(tokenizer=tokenizer)
 
-    output_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
+    # Use save_dir if provided, otherwise fall back to default
+    if save_dir is None:
+        output_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
+    else:
+        output_dir = save_dir
+
     os.makedirs(output_dir, exist_ok=True)
 
     args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=cfg["num_epochs"],
-        max_steps=cfg.get("max_steps", 500),
+        max_steps=cfg.get("max_steps", None),
         per_device_train_batch_size=cfg["batch_size"],
         per_device_eval_batch_size=cfg["batch_size"],
         gradient_accumulation_steps=cfg["gradient_accumulation_steps"],
@@ -169,19 +176,17 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         data_collator=collator,
     )
 
-    print("\n🎯 Starting LoRA fine-tuning...")
+    num_gpus = torch.cuda.device_count()
+    print(f"\n🎯 Starting LoRA fine-tuning with {num_gpus} GPU(s)...")
     trainer.train()
     print("\n✅ Training complete!")
 
-    if save_dir is None:
-        save_dir = os.path.join(output_dir, "lora_adapters")
-    else:
-        save_dir = os.path.join(save_dir, "lora_adapters")
-
-    os.makedirs(save_dir, exist_ok=True)
-    model.save_pretrained(save_dir)
-    tokenizer.save_pretrained(save_dir)
-    print(f"💾 Saved LoRA adapters to {save_dir}")
+    # Save adapters
+    adapter_dir = os.path.join(output_dir, "lora_adapters")
+    os.makedirs(adapter_dir, exist_ok=True)
+    model.save_pretrained(adapter_dir)
+    tokenizer.save_pretrained(adapter_dir)
+    print(f"💾 Saved LoRA adapters to {adapter_dir}")
 
 
 # ---------------------------------------------------------------------------
@@ -190,30 +195,53 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
 
 def main(cfg_path: str = None):
+
     if cfg_path:
         cfg = load_config(cfg_path)
     else:
         cfg = load_config()
 
+    # Initialize Accelerator to detect GPU count
+    accelerator = Accelerator()
+
+    # Determine output directory based on number of GPUs
+    num_gpus = accelerator.num_processes
+    gpu_suffix = f"{num_gpus}-gpu" if num_gpus == 1 else f"{num_gpus}-gpus"
+    model_name = cfg["base_model"].split("/")[-1]  # e.g., "Llama-3.2-8B"
+
+    run_output_dir = os.path.join(
+        ACCELERATE_DDP_OUTPUTS_DIR, f"{model_name.lower()}-{gpu_suffix}"
+    )
+
+    # Update config with this directory
+    cfg["save_dir"] = run_output_dir
+
+    # Also update wandb run name to include GPU count
+    original_run_name = cfg.get("wandb_run_name", f"{model_name.lower()}-samsum-accelerate-ddp")
+    cfg["wandb_run_name"] = f"{original_run_name}-{gpu_suffix}"
+
     # Load dataset
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
+
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
         cfg, use_4bit=True, use_lora=True, padding_side="right"
     )
 
-    # Initialize W&B
-    wandb.init(
-        project=cfg.get("wandb_project", "llama3_samsum"),
-        name=cfg.get("wandb_run_name", "lora-finetuning-default-hps"),
-        config={
-            "model": cfg["base_model"],
-            "learning_rate": cfg.get("learning_rate", 2e-4),
-            "epochs": cfg.get("num_epochs", 1),
-            "lora_r": cfg.get("lora_r", 8),
-            "lora_alpha": cfg.get("lora_alpha", 16),
-        },
-    )
+    # Initialize W&B only on main process
+    if accelerator.is_main_process:
+        wandb.init(
+            project=cfg.get("wandb_project", "llama3_samsum"),
+            name=cfg["wandb_run_name"],
+            config={
+                "model": cfg["base_model"],
+                "learning_rate": cfg.get("learning_rate", 2e-4),
+                "epochs": cfg.get("num_epochs", 1),
+                "lora_r": cfg.get("lora_r", 8),
+                "lora_alpha": cfg.get("lora_alpha", 16),
+                "num_gpus": num_gpus,
+            },
+        )
 
     train_model(
         cfg,
@@ -221,11 +249,12 @@ def main(cfg_path: str = None):
         tokenizer,
         train_data,
         val_data,
-        save_dir=cfg.get("save_dir", None),
+        save_dir=run_output_dir,
     )
 
     # Finish the wandb run to allow next experiment to start fresh
-    wandb.finish()
+    if accelerator.is_main_process:
+        wandb.finish()
 
 
 if __name__ == "__main__":

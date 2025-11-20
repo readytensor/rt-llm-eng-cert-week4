@@ -1,11 +1,12 @@
 """
-evaluate_lora.py
+evaluate_qlora.py
 Evaluate a fine-tuned LoRA model on the SAMSum dataset.
 Reuses shared utilities for config, dataset loading, and inference.
 """
 
 import os
 import json
+import argparse
 import torch
 from dotenv import load_dotenv
 from peft import PeftModel
@@ -14,7 +15,6 @@ from utils.config_utils import load_config
 from utils.data_utils import load_and_prepare_dataset
 from utils.model_utils import setup_model_and_tokenizer
 from utils.inference_utils import generate_predictions, compute_rouge
-from paths import OUTPUTS_DIR
 
 load_dotenv()
 
@@ -24,35 +24,30 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 
 
-def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
+def evaluate_peft_model(cfg, adapter_path: str):
     """Load base model, attach LoRA adapters, and evaluate."""
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # ----------------------------
+    # Validate adapter path
+    # ----------------------------
+    if not os.path.exists(adapter_path):
+        raise FileNotFoundError(f"LoRA adapter directory not found: {adapter_path}")
+
+    # Results will be saved in the parent directory of the adapter
+    results_dir = os.path.dirname(adapter_path)
 
     # ----------------------------
     # Model & Tokenizer
     # ----------------------------
-    print("Loading base model...")
+    print(f"\nLoading base model: {cfg['base_model']}...")
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=False, padding_side="left", 
-        device_map=device
+        cfg, use_4bit=True, use_lora=False, padding_side="left", device_map=device
     )
 
-    if adapter_dir is None:
-        if cfg.get("save_dir", None) is None:
-            adapter_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", "lora_adapters")
-        else:
-            adapter_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", cfg.get("save_dir"), "lora_adapters")
-
-    else:
-        adapter_dir = os.path.join(OUTPUTS_DIR, adapter_dir, "lora_adapters")
-
-
-    if not os.path.exists(adapter_dir):
-        raise FileNotFoundError(f"LoRA adapter directory not found: {adapter_dir}")
-
-    print(f"Loading fine-tuned LoRA adapters from: {adapter_dir}")
-    model = PeftModel.from_pretrained(model, adapter_dir)
+    print(f"Loading fine-tuned LoRA adapters from: {adapter_path}")
+    model = PeftModel.from_pretrained(model, adapter_path)
     model.eval()
     tokenizer.padding_side = "left"
 
@@ -84,19 +79,17 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
     print("\nComputing ROUGE metrics...")
     scores = compute_rouge(preds, val_data)
 
-    print("\nEvaluation Results:")
-    print(f"  ROUGE-1: {scores['rouge1']:.2%}")
-    print(f"  ROUGE-2: {scores['rouge2']:.2%}")
-    print(f"  ROUGE-L: {scores['rougeL']:.2%}")
+    print("\n" + "=" * 50)
+    print("EVALUATION RESULTS")
+    print("=" * 50)
+    print(f"ROUGE-1: {scores['rouge1']:.4f} ({scores['rouge1']:.2%})")
+    print(f"ROUGE-2: {scores['rouge2']:.4f} ({scores['rouge2']:.2%})")
+    print(f"ROUGE-L: {scores['rougeL']:.4f} ({scores['rougeL']:.2%})")
+    print("=" * 50)
 
     # ----------------------------
     # Save Outputs
     # ----------------------------
-    if results_dir is None:
-        if cfg.get("save_dir", None) is None:
-            results_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
-        else:
-            results_dir = os.path.join(OUTPUTS_DIR, "lora_samsum", cfg.get("save_dir"))
     os.makedirs(results_dir, exist_ok=True)
 
     results_path = os.path.join(results_dir, "eval_results.json")
@@ -108,7 +101,7 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
         "rougeL": scores["rougeL"],
         "num_samples": len(val_data),
         "base_model": cfg["base_model"],
-        "adapter_dir": adapter_dir,
+        "adapter_path": adapter_path,
     }
 
     with open(results_path, "w", encoding="utf-8") as f:
@@ -126,8 +119,8 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
             )
             f.write("\n")
 
-    print(f"\nSaved results to {results_path}")
-    print(f"Saved predictions to {preds_path}")
+    print(f"\n✅ Saved results to {results_path}")
+    print(f"✅ Saved predictions to {preds_path}")
 
     return scores, preds
 
@@ -138,12 +131,37 @@ def evaluate_peft_model(cfg, adapter_dir: str = None, results_dir: str = None):
 
 
 def main():
-    cfg = load_config()
-    scores, preds = evaluate_peft_model(cfg)
+    parser = argparse.ArgumentParser(
+        description="Evaluate LoRA fine-tuned model on SAMSum"
+    )
+    parser.add_argument(
+        "--adapter_path",
+        "-a",
+        type=str,
+        required=True,
+        help="Path to LoRA adapter directory (e.g., data/outputs/accelerate_ddp/llama-3.2-8b-2-gpus/lora_adapters)",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to config file (optional)",
+    )
 
-    print("Evaluation complete.")
-    print("Sample prediction:\n")
-    print(preds[0])
+    args = parser.parse_args()
+
+    # Load config
+    if args.config:
+        cfg = load_config(args.config)
+    else:
+        cfg = load_config()
+
+    # Evaluate
+    scores, preds = evaluate_peft_model(cfg, args.adapter_path)
+
+    print("\n✅ Evaluation complete.")
+    print("\nSample prediction:")
+    print(f"{preds[0][:150]}...")
 
 
 if __name__ == "__main__":
