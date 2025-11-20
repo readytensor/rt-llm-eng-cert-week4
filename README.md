@@ -76,7 +76,7 @@ accelerate launch --config_file code/configs/accelerate/config_4gpu.yaml code/tr
 
 ## Evaluation
 
-After training, evaluate each model (update the model name in the command below)
+After training, evaluate each model (update the model name in the command below). You set it in the `code/config.yaml` file. Use lowercase for the model name.
 
 ```bash
 # Evaluate 1 GPU model
