@@ -158,6 +158,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         per_device_train_batch_size=cfg["batch_size"],
         per_device_eval_batch_size=cfg["batch_size"],
         gradient_accumulation_steps=cfg["gradient_accumulation_steps"],
+        gradient_checkpointing_kwargs={"use_reentrant": False},  # Critical for DDP
         learning_rate=float(cfg["learning_rate"]),
         lr_scheduler_type=cfg.get("lr_scheduler", "cosine"),
         warmup_steps=cfg.get("warmup_steps", 100),
@@ -180,18 +181,20 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
     num_gpus = torch.cuda.device_count()
     print(f"\n🎯 Starting LoRA fine-tuning with {num_gpus} GPU(s)...")
-    
+
     # Track training duration
     start_time = time.time()
     trainer.train()
     end_time = time.time()
-    
+
     # Calculate duration in minutes
     duration_seconds = end_time - start_time
-    duration_minutes = duration_seconds / 60.
-    
+    duration_minutes = duration_seconds / 60.0
+
     print("\n✅ Training complete!")
-    print(f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)")
+    print(
+        f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)"
+    )
 
     # Save adapters
     adapter_dir = os.path.join(output_dir, "lora_adapters")
@@ -199,7 +202,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     model.save_pretrained(adapter_dir)
     tokenizer.save_pretrained(adapter_dir)
     print(f"💾 Saved LoRA adapters to {adapter_dir}")
-    
+
     # Save training duration
     duration_info = {
         "duration_minutes": round(duration_minutes, 3),
@@ -246,8 +249,14 @@ def main(cfg_path: str = None):
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
 
     # Reuse unified model setup (quantization + LoRA)
+    # For distributed training, we must NOT use device_map="auto"
+    # Accelerate will handle device placement
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=True, padding_side="right"
+        cfg,
+        use_4bit=True,
+        use_lora=True,
+        padding_side="right",
+        device_map=accelerator.local_process_index,
     )
 
     # Initialize W&B only on main process
