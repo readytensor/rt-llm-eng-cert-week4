@@ -44,7 +44,7 @@ target_modules: ["q_proj", "v_proj"]
 # Training Configuration
 # ==============================================
 num_epochs: 1
-max_steps: 300
+# max_steps: 300
 learning_rate: 2e-4
 batch_size: 4
 gradient_accumulation_steps: 4
