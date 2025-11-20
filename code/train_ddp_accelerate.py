@@ -217,7 +217,7 @@ def main(cfg_path: str = None):
     cfg["save_dir"] = run_output_dir
 
     # Also update wandb run name to include GPU count
-    original_run_name = cfg.get("wandb_run_name", f"{model_name.lower()}-samsum-accelerate-ddp")
+    original_run_name = f"{model_name.lower()}-samsum-accelerate-ddp"
     cfg["wandb_run_name"] = f"{original_run_name}-{gpu_suffix}"
 
     # Load dataset
