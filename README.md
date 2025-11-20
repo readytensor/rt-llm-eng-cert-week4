@@ -70,23 +70,23 @@ accelerate launch --config_file code/configs/accelerate/config_4gpu.yaml code/tr
 
 **Outputs saved to:**
 
-- `data/outputs/accelerate_ddp/llama-3.2-8b-1-gpu/`
-- `data/outputs/accelerate_ddp/llama-3.2-8b-2-gpus/`
-- `data/outputs/accelerate_ddp/llama-3.2-8b-4-gpus/`
+- `data/outputs/accelerate_ddp/<model_name>-1-gpu/`
+- `data/outputs/accelerate_ddp/<model_name>-2-gpus/`
+- `data/outputs/accelerate_ddp/<model_name>-4-gpus/`
 
 ## Evaluation
 
-After training, evaluate each model:
+After training, evaluate each model (update the model name in the command below)
 
 ```bash
 # Evaluate 1 GPU model
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/llama-3.2-8b-1-gpu/lora_adapters
+python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/<model_name>-1-gpu/lora_adapters
 
 # Evaluate 2 GPU model
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/llama-3.2-8b-2-gpus/lora_adapters
+python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/<model_name>-2-gpus/lora_adapters
 
 # Evaluate 4 GPU model
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/llama-3.2-8b-4-gpus/lora_adapters
+python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/<model_name>-4-gpus/lora_adapters
 ```
 
 **Results saved alongside adapters:**
