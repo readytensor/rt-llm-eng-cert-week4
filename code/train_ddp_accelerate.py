@@ -5,6 +5,8 @@ Fully integrated with shared utilities and config.yaml.
 """
 
 import os
+import json
+import time
 import wandb
 import torch
 from dotenv import load_dotenv
@@ -178,8 +180,18 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
     num_gpus = torch.cuda.device_count()
     print(f"\n🎯 Starting LoRA fine-tuning with {num_gpus} GPU(s)...")
+    
+    # Track training duration
+    start_time = time.time()
     trainer.train()
+    end_time = time.time()
+    
+    # Calculate duration in minutes
+    duration_seconds = end_time - start_time
+    duration_minutes = duration_seconds / 60.
+    
     print("\n✅ Training complete!")
+    print(f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)")
 
     # Save adapters
     adapter_dir = os.path.join(output_dir, "lora_adapters")
@@ -187,6 +199,16 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     model.save_pretrained(adapter_dir)
     tokenizer.save_pretrained(adapter_dir)
     print(f"💾 Saved LoRA adapters to {adapter_dir}")
+    
+    # Save training duration
+    duration_info = {
+        "duration_minutes": round(duration_minutes, 3),
+        "duration_seconds": round(duration_seconds, 0),
+    }
+    duration_path = os.path.join(output_dir, "training_duration.json")
+    with open(duration_path, "w", encoding="utf-8") as f:
+        json.dump(duration_info, f, indent=2)
+    print(f"⏱️  Saved training duration to {duration_path}")
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +229,7 @@ def main(cfg_path: str = None):
     # Determine output directory based on number of GPUs
     num_gpus = accelerator.num_processes
     gpu_suffix = f"{num_gpus}-gpu" if num_gpus == 1 else f"{num_gpus}-gpus"
-    model_name = cfg["base_model"].split("/")[-1]  # e.g., "Llama-3.2-8B"
+    model_name = cfg["base_model"].split("/")[-1].lower()  # e.g., "Llama-3.2-8B"
 
     run_output_dir = os.path.join(
         ACCELERATE_DDP_OUTPUTS_DIR, f"{model_name.lower()}-{gpu_suffix}"
