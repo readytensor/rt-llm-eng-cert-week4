@@ -122,7 +122,7 @@ def preprocess_samples(examples, tokenizer, task_instruction, max_length):
 # ---------------------------------------------------------------------------
 
 
-def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str):
+def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_lora: bool):
     """Tokenize datasets, configure Trainer, and run fine-tuning with FSDP."""
     task_instruction = cfg["task_instruction"]
 
@@ -198,12 +198,18 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str):
         f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)"
     )
 
-    # Save model/adapters
-    model_dir = os.path.join(save_dir, "final_model")
+    # Save model/adapters with appropriate folder name
+    if use_lora:
+        model_dir = os.path.join(save_dir, "lora_adapters")
+        save_message = "LoRA adapters"
+    else:
+        model_dir = os.path.join(save_dir, "final_model")
+        save_message = "full model"
+    
     os.makedirs(model_dir, exist_ok=True)
     model.save_pretrained(model_dir)
     tokenizer.save_pretrained(model_dir)
-    print(f"💾 Saved model to {model_dir}")
+    print(f"💾 Saved {save_message} to {model_dir}")
 
     # Save training duration
     duration_info = {
@@ -310,7 +316,7 @@ def main():
             config=wandb_config,
         )
 
-    train_model(cfg, model, tokenizer, train_data, val_data, run_output_dir)
+    train_model(cfg, model, tokenizer, train_data, val_data, run_output_dir, use_lora)
 
     # Finish W&B run on main process
     if accelerator.is_main_process:
