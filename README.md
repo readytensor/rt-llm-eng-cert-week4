@@ -160,3 +160,50 @@ python code/evaluate_model.py \
 ```
 
 **Evaluation outputs:** Same structure (in model path directory)
+
+---
+
+### Scenario 4: DeepSpeed ZeRO (Full Fine-Tuning or LoRA)
+
+DeepSpeed supports 8 combinations: {LoRA, Full FT} × {ZeRO2, ZeRO3} × {2 GPU, 4 GPU}
+
+**Training pattern:**
+
+```bash
+accelerate launch --config_file code/configs/accelerate/deepspeed_<ngpu>gpu_zero<stage>.yaml \
+    code/train_deepspeed.py --cfg_path code/configs/training/<lora|full_ft>.yaml
+```
+
+**Examples:**
+
+```bash
+# LoRA with 2 GPU, ZeRO2
+accelerate launch --config_file code/configs/accelerate/deepspeed_2gpu_zero2.yaml \
+    code/train_deepspeed.py --cfg_path code/configs/training/lora.yaml
+
+# Full fine-tuning with 4 GPU, ZeRO3
+accelerate launch --config_file code/configs/accelerate/deepspeed_4gpu_zero3.yaml \
+    code/train_deepspeed.py --cfg_path code/configs/training/full_ft.yaml
+```
+
+**Outputs:**
+
+- `data/outputs/deepspeed_zero<stage>_<ngpu>gpu_<lora|full>/<model-name>/lora_adapters/` (LoRA)
+- `data/outputs/deepspeed_zero<stage>_<ngpu>gpu_<lora|full>/<model-name>/final_model/` (Full FT)
+- `data/outputs/deepspeed_zero<stage>_<ngpu>gpu_<lora|full>/<model-name>/training_duration.json`
+
+**Evaluation:**
+
+```bash
+# LoRA
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/lora.yaml \
+    --model_path data/outputs/deepspeed_zero2_2gpu_lora/<model-name>/lora_adapters
+
+# Full FT
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/full_ft.yaml \
+    --model_path data/outputs/deepspeed_zero3_4gpu_full/<model-name>/final_model
+```
+
+**Evaluation outputs:** Same structure (in model path directory)
