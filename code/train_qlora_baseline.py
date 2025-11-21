@@ -4,7 +4,6 @@ Fully integrated with shared utilities and config.yaml.
 """
 
 import os
-import time
 import wandb
 import torch
 from dotenv import load_dotenv
@@ -13,7 +12,6 @@ from transformers import (
     TrainingArguments,
     Trainer,
 )
-from accelerate import Accelerator
 from utils.config_utils import load_config
 from utils.data_utils import load_and_prepare_dataset, build_messages_for_sample
 from utils.model_utils import setup_model_and_tokenizer
@@ -122,7 +120,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     """Tokenize datasets, configure Trainer, and run LoRA fine-tuning."""
     task_instruction = cfg["task_instruction"]
 
-    print("\nTokenizing datasets...")
+    print("\n📚 Tokenizing datasets...")
     tokenized_train = train_data.map(
         lambda e: preprocess_samples(
             e, tokenizer, task_instruction, cfg["sequence_len"]
@@ -161,8 +159,6 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         logging_steps=cfg.get("logging_steps", 25),
         save_total_limit=cfg.get("save_total_limit", 2),
         report_to="wandb",
-        gradient_checkpointing=cfg.get("gradient_checkpointing", False),
-        gradient_checkpointing_kwargs=cfg.get("gradient_checkpointing_kwargs", None),
     )
 
     trainer = Trainer(
@@ -173,24 +169,19 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         data_collator=collator,
     )
 
-    print("\nStarting LoRA fine-tuning...")
-    start_time = time.time()
+    print("\n🎯 Starting LoRA fine-tuning...")
     trainer.train()
-    end_time = time.time()
-    print(f"\nTraining complete! Time taken: {end_time - start_time:.2f} seconds")
+    print("\n✅ Training complete!")
 
     if save_dir is None:
         save_dir = os.path.join(output_dir, "lora_adapters")
     else:
-        save_dir = os.path.join(output_dir, save_dir, "lora_adapters")
+        save_dir = os.path.join(save_dir, "lora_adapters")
 
     os.makedirs(save_dir, exist_ok=True)
     model.save_pretrained(save_dir)
     tokenizer.save_pretrained(save_dir)
-    print(f"Saved LoRA adapters to {save_dir}")
-
-    with open(os.path.join(os.path.dirname(save_dir), "training_time.txt"), "w") as f:
-        f.write(f"Training time: {end_time - start_time:.2f} seconds")
+    print(f"💾 Saved LoRA adapters to {save_dir}")
 
 
 # ---------------------------------------------------------------------------
@@ -204,17 +195,11 @@ def main(cfg_path: str = None):
     else:
         cfg = load_config()
 
-    accelerator = Accelerator()
-
     # Load dataset
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
-        cfg,
-        use_4bit=True,
-        use_lora=True,
-        padding_side="right",
-        device_map=accelerator.local_process_index,
+        cfg, use_4bit=True, use_lora=True, padding_side="right"
     )
 
     # Initialize W&B
