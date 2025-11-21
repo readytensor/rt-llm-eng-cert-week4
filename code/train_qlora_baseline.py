@@ -139,7 +139,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
     collator = PaddingCollator(tokenizer=tokenizer)
 
-    output_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
+    output_dir = os.path.join(OUTPUTS_DIR, "lora_samsum") if save_dir is None else save_dir
     os.makedirs(output_dir, exist_ok=True)
 
     args = TrainingArguments(
@@ -173,15 +173,9 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     trainer.train()
     print("\n✅ Training complete!")
 
-    if save_dir is None:
-        save_dir = os.path.join(output_dir, "lora_adapters")
-    else:
-        save_dir = os.path.join(save_dir, "lora_adapters")
-
-    os.makedirs(save_dir, exist_ok=True)
-    model.save_pretrained(save_dir)
-    tokenizer.save_pretrained(save_dir)
-    print(f"💾 Saved LoRA adapters to {save_dir}")
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
+    print(f"💾 Saved LoRA adapters to {output_dir}")
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +193,7 @@ def main(cfg_path: str = None):
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=True, padding_side="right"
+        cfg, use_4bit=True, use_lora=True, padding_side="right",
     )
 
     # Initialize W&B
@@ -215,13 +209,15 @@ def main(cfg_path: str = None):
         },
     )
 
+    output_dir = os.path.join(OUTPUTS_DIR, cfg.get("save_dir_name", "baseline_qlora"))
+
     train_model(
         cfg,
         model,
         tokenizer,
         train_data,
         val_data,
-        save_dir=cfg.get("save_dir", None),
+        save_dir=output_dir,
     )
 
     # Finish the wandb run to allow next experiment to start fresh
