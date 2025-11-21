@@ -61,44 +61,50 @@ From the repository root:
 # Baseline QLoRA model
 python code/train_qlora_baseline.py
 
-
+# ---------------------------------------------------------------------------------------------
+# !!!! DDP STRATEGY !!!!
 # DDP with 2 GPUs (QLoRA)
 accelerate launch --config_file code/configs/accelerate/ddp_2gpu.yaml code/train_qlora_ddp.py
 
 # DDP with 4 GPUs (QLoRA)
 accelerate launch --config_file code/configs/accelerate/ddp_4gpu.yaml code/train_qlora_ddp.py
 
+# ---------------------------------------------------------------------------------------------
+# !!!! FSDP STRATEGY !!!!
+
 # LoRA fine-tuning with FSDP (2 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_2gpu_zero2.yaml \
-    train_fsdp.py --cfg_path configs/lora.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero2.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
 
 # Full fine-tuning with FSDP (2 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_2gpu_zero2.yaml \
-    train_fsdp.py --cfg_path configs/full_ft.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero2.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
 
 # LoRA fine-tuning with FSDP (2 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_2gpu_zero3.yaml \
-    train_fsdp.py --cfg_path configs/lora.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero3.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
 
 # Full fine-tuning with FSDP (2 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_2gpu_zero3.yaml \
-    train_fsdp.py --cfg_path configs/full_ft.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero3.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
 
 # LoRA fine-tuning with FSDP (4 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_4gpu_zero2.yaml \
-    train_fsdp.py --cfg_path configs/lora.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero2.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
 
 # Full fine-tuning with FSDP (4 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_4gpu_zero2.yaml \
-    train_fsdp.py --cfg_path configs/full_ft.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero2.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
 
 # LoRA fine-tuning with FSDP (4 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_4gpu_zero3.yaml \
-    train_fsdp.py --cfg_path configs/lora.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero3.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
 
 # Full fine-tuning with FSDP (4 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file configs/accelerate/fsdp_4gpu_zero3.yaml \
-    train_fsdp.py --cfg_path configs/full_ft.yaml
+accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero3.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
+
+# ---------------------------------------------------------------------------------------------
 ```
 
 **Outputs saved to:**
