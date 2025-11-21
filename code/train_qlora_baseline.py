@@ -24,7 +24,7 @@ from paths import OUTPUTS_DIR
 
 load_dotenv()
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 # ---------------------------------------------------------------------------
 # Preprocessing
