@@ -68,18 +68,18 @@ def load_model_for_evaluation(cfg, model_path: str):
         )
 
         # Load LoRA adapters
-        print(f"🔧 Loading LoRA adapters...")
+        print("🔧 Loading LoRA adapters...")
         model = PeftModel.from_pretrained(model, model_path)
         model.eval()
-        print(f"✅ Successfully loaded LoRA model")
+        print("✅ Successfully loaded LoRA model")
 
         return model, tokenizer, base_model_name
 
     else:  # full_model
-        print(f"\n📦 Detected full fine-tuned model at: {model_path}")
+        print("\n📦 Detected full fine-tuned model at: {model_path}")
 
         # Load tokenizer and model directly from path
-        print(f"🔧 Loading model and tokenizer...")
+        print("🔧 Loading model and tokenizer...")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         tokenizer.padding_side = "left"
 
@@ -87,7 +87,7 @@ def load_model_for_evaluation(cfg, model_path: str):
             model_path, torch_dtype=torch.bfloat16, device_map="auto"
         )
         model.eval()
-        print(f"✅ Successfully loaded full fine-tuned model")
+        print("✅ Successfully loaded full fine-tuned model")
 
         # Extract model name from path for results
         model_name = model_path
