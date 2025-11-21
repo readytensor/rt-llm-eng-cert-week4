@@ -60,6 +60,6 @@ optim: paged_adamw_8bit
 # ==============================================
 # Output & Logging
 # ==============================================
-output_dir: ./outputs/lora_samsum
+save_dir: ./outputs/baseline_qlora
 wandb_project: llama3_samsum
 wandb_run_name: lora-finetuning-default-hps
