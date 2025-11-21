@@ -25,27 +25,30 @@ task_instruction: >
   Summarize the following conversation into a single sentence.
 
 # ==============================================
-# NO LoRA Configuration = Full Fine-tuning
+# LoRA Configuration (present = LoRA enabled)
 # ==============================================
-# (Remove or comment out lora_r to disable LoRA)
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.1
+target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
 
 # ==============================================
 # Training Configuration
 # ==============================================
 num_epochs: 1
-learning_rate: 5e-5 # Lower LR for full fine-tuning
-batch_size: 2
-eval_batch_size: 2
-gradient_accumulation_steps: 8
+learning_rate: 2e-4
+batch_size: 4
+eval_batch_size: 4
+gradient_accumulation_steps: 4
 sequence_len: 512
 lr_scheduler: cosine
-warmup_steps: 100
+warmup_steps: 50
 bf16: true
 logging_steps: 25
-optim: adamw_torch
+optim: adamw_torch # Use standard AdamW (no quantization)
 
 # ==============================================
 # Output & Logging
 # ==============================================
 wandb_project: llama3_samsum
-wandb_run_name: fsdp-full-finetuning
+wandb_run_name: fsdp-lora-finetuning
