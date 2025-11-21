@@ -15,7 +15,7 @@ dataset:
     output: summary
   type: completion
   splits:
-    train: 100
+    train: all
     validation: 200
     test: 200
   seed: 42
@@ -47,6 +47,7 @@ num_epochs: 1
 max_steps: -1
 learning_rate: 2e-4
 batch_size: 2
+eval_batch_size: 4
 gradient_accumulation_steps: 8
 sequence_len: 512
 lr_scheduler: cosine
