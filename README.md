@@ -1,17 +1,3 @@
-# Week 4: Scaling LLM Training
-
-This repository contains code and examples for Week 4 of the LLM Engineering and Deployment Certification Program, covering memory optimization, distributed training, and production workflows for LLM fine-tuning.
-
-## Topics Covered
-
-- **Distributed Data Parallelism (DDP)** - Speed up training with Accelerate
-- **DeepSpeed ZeRO** - Memory-efficient multi-GPU sharding
-- **FSDP** - PyTorch's Fully Sharded Data Parallelism
-- **Axolotl** - Production-grade training framework
-- **Advanced Parallelism** - Tensor and pipeline parallelism concepts
-
----
-
 ## System Requirements
 
 - Multi-GPU machine (RunPod, Lambda Labs, AWS, or local)
