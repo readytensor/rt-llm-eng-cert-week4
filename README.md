@@ -49,87 +49,114 @@ For Llama models, accept the license at [meta-llama/Llama-3.2-8B](https://huggin
 
 ---
 
-## 1. Distributed Training with Accelerate
+## Usage
 
-Train Llama 3.2 8B with QLoRA across multiple GPUs using Hugging Face Accelerate.
+### Scenario 1: Baseline QLoRA (Single GPU)
 
-## Training
-
-From the repository root:
+**Training:**
 
 ```bash
-# Baseline QLoRA model
 python code/train_qlora_baseline.py
-
-# ---------------------------------------------------------------------------------------------
-# !!!! DDP STRATEGY !!!!
-# DDP with 2 GPUs (QLoRA)
-accelerate launch --config_file code/configs/accelerate/ddp_2gpu.yaml code/train_qlora_ddp.py
-
-# DDP with 4 GPUs (QLoRA)
-accelerate launch --config_file code/configs/accelerate/ddp_4gpu.yaml code/train_qlora_ddp.py
-
-# ---------------------------------------------------------------------------------------------
-# !!!! FSDP STRATEGY !!!!
-
-# LoRA fine-tuning with FSDP (2 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero2.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
-
-# Full fine-tuning with FSDP (2 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero2.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
-
-# LoRA fine-tuning with FSDP (2 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero3.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
-
-# Full fine-tuning with FSDP (2 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero3.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
-
-# LoRA fine-tuning with FSDP (4 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero2.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
-
-# Full fine-tuning with FSDP (4 GPU, ZeRO2) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero2.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
-
-# LoRA fine-tuning with FSDP (4 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero3.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
-
-# Full fine-tuning with FSDP (4 GPU, ZeRO3) - Not 4-bit quantized!!
-accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero3.yaml \
-    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
-
-# ---------------------------------------------------------------------------------------------
 ```
 
-**Outputs saved to:**
+**Outputs:**
 
-- `data/outputs/accelerate_baseline_1gpu/<model_name>-1-gpu/`
-- `data/outputs/accelerate_ddp/<model_name>-2-gpus/`
-- `data/outputs/accelerate_ddp/<model_name>-4-gpus/`
+- `data/outputs/baseline_qlora/lora_adapters/` - LoRA adapters
+- `data/outputs/baseline_qlora/training_duration.json` - Training time
 
-## Evaluation
-
-After training, evaluate each model (update the model name in the command below). You set it in the `code/config.yaml` file. Use lowercase for the model name.
+**Evaluation:**
 
 ```bash
-# Evaluate baseline QLoRA model
-python code/evaluate_model.py  --cfg_path  code/configs/training/qlora.yaml --model_path data/outputs/baseline_qlora/lora_adapters
-
-# Evaluate DDP with 2 GPUs (change model name to your own)
-python code/evaluate_model.py --model_path data/outputs/ddp_2gpu/llama-3.2-1b-instruct/lora_adapters --cfg_path code/configs/training/qlora.yaml
-
-# Evaluate DDP with 4 GPUs (change model name to your own)
-python code/evaluate_model.py --model_path data/outputs/ddp_4gpu/llama-3.2-1b-instruct/lora_adapters --cfg_path code/configs/training/qlora.yaml
-
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/qlora.yaml \
+    --model_path data/outputs/baseline_qlora/lora_adapters
 ```
 
-**Results saved alongside adapters:**
+**Evaluation outputs:**
 
-- `eval_results.json` - ROUGE scores
-- `predictions.jsonl` - Model predictions
+- `data/outputs/baseline_qlora/lora_adapters/eval_results.json` - ROUGE scores
+- `data/outputs/baseline_qlora/lora_adapters/predictions.jsonl` - Model predictions
+
+---
+
+### Scenario 2: DDP + QLoRA (Multi-GPU)
+
+**Training (2 GPUs):**
+
+```bash
+accelerate launch --config_file code/configs/accelerate/ddp_2gpu.yaml code/train_qlora_ddp.py
+```
+
+**Training (4 GPUs):**
+
+```bash
+accelerate launch --config_file code/configs/accelerate/ddp_4gpu.yaml code/train_qlora_ddp.py
+```
+
+**Outputs:**
+
+- `data/outputs/ddp_2gpu/<model-name>/lora_adapters/` - LoRA adapters
+- `data/outputs/ddp_2gpu/<model-name>/training_duration.json` - Training time
+
+**Evaluation:**
+
+```bash
+# 2 GPU
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/qlora.yaml \
+    --model_path data/outputs/ddp_2gpu/<model-name>/lora_adapters
+
+# 4 GPU
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/qlora.yaml \
+    --model_path data/outputs/ddp_4gpu/<model-name>/lora_adapters
+```
+
+**Evaluation outputs:** Same as baseline (in model path directory)
+
+---
+
+### Scenario 3: FSDP (Full Fine-Tuning or LoRA)
+
+FSDP supports 8 combinations: {LoRA, Full FT} × {ZeRO2, ZeRO3} × {2 GPU, 4 GPU}
+
+**Training pattern:**
+
+```bash
+accelerate launch --cfg_path code/configs/accelerate/fsdp_<ngpu>gpu_zero<stage>.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/<lora|full_ft>.yaml
+```
+
+**Examples:**
+
+```bash
+# LoRA with 2 GPU, ZeRO2
+accelerate launch --config_file code/configs/accelerate/fsdp_2gpu_zero2.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/lora.yaml
+
+# Full fine-tuning with 4 GPU, ZeRO3
+accelerate launch --config_file code/configs/accelerate/fsdp_4gpu_zero3.yaml \
+    code/train_fsdp.py --cfg_path code/configs/training/full_ft.yaml
+```
+
+**Outputs:**
+
+- `data/outputs/fsdp_<ngpu>gpu_zero<stage>/<model-name>/lora_adapters/` (LoRA)
+- `data/outputs/fsdp_<ngpu>gpu_zero<stage>/<model-name>/final_model/` (Full FT)
+- `data/outputs/fsdp_<ngpu>gpu_zero<stage>/<model-name>/training_duration.json`
+
+**Evaluation:**
+
+```bash
+# LoRA
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/lora.yaml \
+    --model_path data/outputs/fsdp_2gpu_zero2/<model-name>/lora_adapters
+
+# Full FT
+python code/evaluate_model.py \
+    --cfg_path code/configs/training/full_ft.yaml \
+    --model_path data/outputs/fsdp_4gpu_zero3/<model-name>/final_model
+```
+
+**Evaluation outputs:** Same structure (in model path directory)
