@@ -139,7 +139,9 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
     collator = PaddingCollator(tokenizer=tokenizer)
 
-    output_dir = os.path.join(OUTPUTS_DIR, "lora_samsum") if save_dir is None else save_dir
+    output_dir = (
+        os.path.join(OUTPUTS_DIR, "lora_samsum") if save_dir is None else save_dir
+    )
     os.makedirs(output_dir, exist_ok=True)
 
     args = TrainingArguments(
@@ -193,7 +195,10 @@ def main(cfg_path: str = None):
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=True, padding_side="right",
+        cfg,
+        use_4bit=True,
+        use_lora=True,
+        padding_side="right",
     )
 
     # Initialize W&B

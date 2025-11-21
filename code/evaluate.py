@@ -29,7 +29,7 @@ def detect_model_type(model_path: str):
     """Detect if path contains LoRA adapters or full fine-tuned model."""
     adapter_config = os.path.join(model_path, "adapter_config.json")
     model_config = os.path.join(model_path, "config.json")
-    
+
     if os.path.exists(adapter_config):
         return "lora_adapters"
     elif os.path.exists(model_config):
@@ -43,57 +43,55 @@ def detect_model_type(model_path: str):
 
 def load_model_for_evaluation(cfg, model_path: str):
     """Load model based on detected type (LoRA adapters or full model)."""
-    
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model_type = detect_model_type(model_path)
-    
+
     if model_type == "lora_adapters":
         print(f"\n📦 Detected LoRA adapters at: {model_path}")
-        
+
         # Read base model from adapter config
         adapter_config_path = os.path.join(model_path, "adapter_config.json")
-        with open(adapter_config_path, 'r', encoding='utf-8') as f:
+        with open(adapter_config_path, "r", encoding="utf-8") as f:
             adapter_config = json.load(f)
             base_model_name = adapter_config.get("base_model_name_or_path")
-        
+
         print(f"🔧 Loading base model: {base_model_name}")
-        
+
         # Load base model with quantization
         model, tokenizer = setup_model_and_tokenizer(
             {"base_model": base_model_name},
             use_4bit=True,
             use_lora=False,
             padding_side="left",
-            device_map=device
+            device_map=device,
         )
-        
+
         # Load LoRA adapters
         print(f"🔧 Loading LoRA adapters...")
         model = PeftModel.from_pretrained(model, model_path)
         model.eval()
         print(f"✅ Successfully loaded LoRA model")
-        
+
         return model, tokenizer, base_model_name
-        
+
     else:  # full_model
         print(f"\n📦 Detected full fine-tuned model at: {model_path}")
-        
+
         # Load tokenizer and model directly from path
         print(f"🔧 Loading model and tokenizer...")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         tokenizer.padding_side = "left"
-        
+
         model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            torch_dtype=torch.bfloat16,
-            device_map="auto"
+            model_path, torch_dtype=torch.bfloat16, device_map="auto"
         )
         model.eval()
         print(f"✅ Successfully loaded full fine-tuned model")
-        
+
         # Extract model name from path for results
         model_name = model_path
-        
+
         return model, tokenizer, model_name
 
 
