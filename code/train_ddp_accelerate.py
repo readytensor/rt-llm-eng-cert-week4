@@ -170,6 +170,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         report_to="wandb",
         gradient_checkpointing=cfg.get("gradient_checkpointing", False),
         gradient_checkpointing_kwargs=cfg.get("gradient_checkpointing_kwargs", None),
+        ddp_find_unused_parameters=False,
     )
 
     trainer = Trainer(
@@ -287,6 +288,12 @@ def main(cfg_path: str = None):
     # Finish the wandb run to allow next experiment to start fresh
     if accelerator.is_main_process:
         wandb.finish()
+
+    # Wait for all processes to finish before cleanup
+    accelerator.wait_for_everyone()
+    
+    # Clean up distributed process group
+    accelerator.free_memory()
 
 
 if __name__ == "__main__":
