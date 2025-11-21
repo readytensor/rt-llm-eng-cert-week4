@@ -29,11 +29,18 @@ def evaluate_peft_model(cfg, adapter_path: str):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # ----------------------------
-    # Validate adapter path
-    # ----------------------------
-    if not os.path.exists(adapter_path):
-        raise FileNotFoundError(f"LoRA adapter directory not found: {adapter_path}")
+    # Read the base model from adapter config
+    adapter_config_path = os.path.join(adapter_path, "adapter_config.json")
+    if os.path.exists(adapter_config_path):
+        with open(adapter_config_path, 'r', encoding='utf-8') as f:
+            adapter_config = json.load(f)
+            base_model_name = adapter_config.get("base_model_name_or_path")
+            print(f"Detected base model from adapter config: {base_model_name}")
+            # Override the config with the correct base model
+            cfg["base_model"] = base_model_name
+    else:
+        print("Warning: Could not find adapter_config.json, using model from config.yaml")
+
 
     # Results will be saved in the parent directory of the adapter
     results_dir = os.path.dirname(adapter_path)
