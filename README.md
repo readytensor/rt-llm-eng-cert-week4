@@ -58,19 +58,25 @@ Train Llama 3.2 8B with QLoRA across multiple GPUs using Hugging Face Accelerate
 From the repository root:
 
 ```bash
-# 1 GPU (baseline)
-accelerate launch --config_file code/configs/accelerate/config_1gpu.yaml code/train_ddp_accelerate.py
+# Single GPU baseline
+accelerate launch --config_file code/configs/accelerate_baseline_1gpu.yaml code/train_ddp_accelerate.py
 
-# 2 GPUs
-accelerate launch --config_file code/configs/accelerate/config_2gpu.yaml code/train_ddp_accelerate.py
+# DDP with 2 GPUs
+accelerate launch --config_file code/configs/accelerate_ddp_2gpu.yaml code/train_ddp_accelerate.py
 
-# 4 GPUs
-accelerate launch --config_file code/configs/accelerate/config_4gpu.yaml code/train_ddp_accelerate.py
+# DDP with 4 GPUs
+accelerate launch --config_file code/configs/accelerate_ddp_4gpu.yaml code/train_ddp_accelerate.py
+
+# FSDP with 2 GPUs
+accelerate launch --config_file code/configs/accelerate_fsdp_zero2_2gpu.yaml code/train_ddp_accelerate.py
+
+# FSDP with 4 GPUs
+accelerate launch --config_file code/configs/accelerate_fsdp_zero2_4gpu.yaml code/train_ddp_accelerate.py
 ```
 
 **Outputs saved to:**
 
-- `data/outputs/accelerate_ddp/<model_name>-1-gpu/`
+- `data/outputs/accelerate_baseline_1gpu/<model_name>-1-gpu/`
 - `data/outputs/accelerate_ddp/<model_name>-2-gpus/`
 - `data/outputs/accelerate_ddp/<model_name>-4-gpus/`
 

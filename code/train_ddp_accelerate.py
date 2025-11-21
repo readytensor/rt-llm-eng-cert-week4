@@ -7,6 +7,7 @@ Fully integrated with shared utilities and config.yaml.
 import os
 import json
 import time
+import argparse
 import wandb
 import torch
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ from transformers import (
 from utils.config_utils import load_config
 from utils.data_utils import load_and_prepare_dataset, build_messages_for_sample
 from utils.model_utils import setup_model_and_tokenizer
-from paths import OUTPUTS_DIR, ACCELERATE_DDP_OUTPUTS_DIR
+from paths import OUTPUTS_DIR
 
 
 # ---------------------------------------------------------------------------
@@ -221,38 +222,60 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 # ---------------------------------------------------------------------------
 
 
-def main(cfg_path: str = None):
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--cfg_path",
+        type=str,
+        default=None,
+        help="Path to training config.yaml",
+    )
+    args = parser.parse_args()
 
-    if cfg_path:
-        cfg = load_config(cfg_path)
+    # Load training config
+    if args.cfg_path:
+        cfg = load_config(args.cfg_path)
     else:
         cfg = load_config()
 
-    # Initialize Accelerator to detect GPU count
+    # Initialize Accelerator to detect distributed setup
     accelerator = Accelerator()
 
-    # Determine output directory based on number of GPUs
-    num_gpus = accelerator.num_processes
-    gpu_suffix = f"{num_gpus}-gpu" if num_gpus == 1 else f"{num_gpus}-gpus"
-    model_name = cfg["base_model"].split("/")[-1].lower()  # e.g., "Llama-3.2-8B"
+    # Get model name (normalize to lowercase with hyphens)
+    model_name = cfg["base_model"].split("/")[-1].lower()
 
-    run_output_dir = os.path.join(
-        ACCELERATE_DDP_OUTPUTS_DIR, f"{model_name.lower()}-{gpu_suffix}"
-    )
+    # Determine folder name based on distributed setup
+    dist_type = accelerator.distributed_type.value  # e.g., "MULTI_GPU", "FSDP", "DEEPSPEED", "NO"
+    num_gpus = accelerator.num_processes
+
+    # Create descriptive folder name
+    if dist_type == "NO" or num_gpus == 1:
+        config_folder = "accelerate_baseline_1gpu"
+    elif dist_type == "MULTI_GPU":
+        config_folder = f"accelerate_ddp_{num_gpus}gpu"
+    elif dist_type == "FSDP":
+        config_folder = f"accelerate_fsdp_{num_gpus}gpu"
+    elif dist_type == "DEEPSPEED":
+        config_folder = f"accelerate_deepspeed_{num_gpus}gpu"
+    else:
+        # Fallback for any other distributed type
+        config_folder = f"{dist_type.lower()}_{num_gpus}gpu"
+
+    # Output directory: outputs/{config_folder}/{model_name}/
+    run_output_dir = os.path.join(OUTPUTS_DIR, config_folder, model_name)
+    run_name = f"{config_folder}-{model_name}"
 
     # Update config with this directory
     cfg["save_dir"] = run_output_dir
 
-    # Also update wandb run name to include GPU count
-    original_run_name = f"{model_name.lower()}-samsum-accelerate-ddp"
-    cfg["wandb_run_name"] = f"{original_run_name}-{gpu_suffix}"
+    print(f"\n🔧 Distributed type: {dist_type}")
+    print(f"🔧 Number of processes: {num_gpus}")
+    print(f"📁 Output directory: {run_output_dir}")
 
     # Load dataset
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
 
     # Reuse unified model setup (quantization + LoRA)
-    # For distributed training, we must NOT use device_map="auto"
-    # Accelerate will handle device placement
     model, tokenizer = setup_model_and_tokenizer(
         cfg,
         use_4bit=True,
@@ -265,7 +288,7 @@ def main(cfg_path: str = None):
     if accelerator.is_main_process:
         wandb.init(
             project=cfg.get("wandb_project", "llama3_samsum"),
-            name=cfg["wandb_run_name"],
+            name=run_name,
             config={
                 "model": cfg["base_model"],
                 "learning_rate": cfg.get("learning_rate", 2e-4),
@@ -273,6 +296,7 @@ def main(cfg_path: str = None):
                 "lora_r": cfg.get("lora_r", 8),
                 "lora_alpha": cfg.get("lora_alpha", 16),
                 "num_gpus": num_gpus,
+                "distributed_type": dist_type,
             },
         )
 
@@ -291,7 +315,7 @@ def main(cfg_path: str = None):
 
     # Wait for all processes to finish before cleanup
     accelerator.wait_for_everyone()
-    
+
     # Clean up distributed process group
     accelerator.free_memory()
 
