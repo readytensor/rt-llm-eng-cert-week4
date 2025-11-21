@@ -15,7 +15,7 @@ dataset:
     output: summary
   type: completion
   splits:
-    train: 1200
+    train: all
     validation: 200
     test: 200
   seed: 42
@@ -46,8 +46,8 @@ target_modules: ["q_proj", "v_proj"]
 num_epochs: 1
 # max_steps: 300
 learning_rate: 2e-4
-batch_size: 4
-gradient_accumulation_steps: 4
+batch_size: 2
+gradient_accumulation_steps: 8
 sequence_len: 512
 lr_scheduler: cosine
 warmup_steps: 50
