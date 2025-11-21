@@ -58,6 +58,10 @@ Train Llama 3.2 8B with QLoRA across multiple GPUs using Hugging Face Accelerate
 From the repository root:
 
 ```bash
+# Baseline QLoRA model
+python code/train_qlora_baseline.py
+
+
 # Single GPU baseline
 accelerate launch --config_file code/configs/accelerate_baseline_1gpu.yaml code/train_accelerate.py
 
@@ -86,7 +90,7 @@ After training, evaluate each model (update the model name in the command below)
 
 ```bash
 # Evaluate baseline QLoRA model
-python code/evaluate_model.py  --config code/configs/training/qlora.yaml --model_path outputs/baseline_qlora/lora_adapters
+python code/evaluate_model.py  --config code/configs/training/qlora.yaml --model_path data/outputs/baseline_qlora/lora_adapters
 
 # Evaluate DDP with 4 GPUs
 python code/evaluate_model.py --model_path data/outputs/accelerate_ddp_4gpu/<model_name>/lora_adapters --config code/configs/training/qlora.yaml
