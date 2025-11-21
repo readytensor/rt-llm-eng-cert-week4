@@ -49,7 +49,7 @@ For Llama models, accept the license at [meta-llama/Llama-3.2-8B](https://huggin
 
 ---
 
-## 1. Distributed Data Parallelism with Accelerate
+## 1. Distributed Training with Accelerate
 
 Train Llama 3.2 8B with QLoRA across multiple GPUs using Hugging Face Accelerate.
 
@@ -85,14 +85,11 @@ accelerate launch --config_file code/configs/accelerate_fsdp_zero2_4gpu.yaml cod
 After training, evaluate each model (update the model name in the command below). You set it in the `code/config.yaml` file. Use lowercase for the model name.
 
 ```bash
-# Evaluate 1 GPU model
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/<model_name>-1-gpu/lora_adapters
+# Evaluate DDP with 2 GPUs
+python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp_2gpu/<model_name>/lora_adapters
 
-# Evaluate 2 GPU model
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/<model_name>-2-gpus/lora_adapters
-
-# Evaluate 4 GPU model
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp/<model_name>-4-gpus/lora_adapters
+# Evaluate DDP with 4 GPUs
+python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp_4gpu/<model_name>/lora_adapters
 ```
 
 **Results saved alongside adapters:**
