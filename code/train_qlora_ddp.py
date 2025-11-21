@@ -1,6 +1,6 @@
 """
 Fine-tune a Llama 3 model on SAMSum (or another dataset) using LoRA and quantization.
-Supports multi-GPU training with Distributed Data Parallelism via Accelerate.
+Supports multi-GPU training with Distributed Data Parallelism (DDP) via Accelerate.
 Fully integrated with shared utilities and config.yaml.
 """
 
@@ -121,15 +121,7 @@ def preprocess_samples(examples, tokenizer, task_instruction, max_length):
 # ---------------------------------------------------------------------------
 
 
-def train_model(
-    cfg,
-    model,
-    tokenizer,
-    train_data,
-    val_data,
-    save_dir: str = None,
-    accelerator: Accelerator = None,
-):
+def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str):
     """Tokenize datasets, configure Trainer, and run LoRA fine-tuning."""
     task_instruction = cfg["task_instruction"]
 
@@ -152,31 +144,10 @@ def train_model(
 
     collator = PaddingCollator(tokenizer=tokenizer)
 
-    # Use save_dir if provided, otherwise fall back to default
-    if save_dir is None:
-        output_dir = os.path.join(OUTPUTS_DIR, "lora_samsum")
-    else:
-        output_dir = save_dir
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Detect if using FSDP and disable intermediate saves
-    is_fsdp = accelerator and accelerator.distributed_type.value == "FSDP"
-
-    if is_fsdp:
-        save_strategy = "no"
-        eval_strategy = "no"
-        load_best_model_at_end = False
-        print(
-            "⚠️  FSDP detected: Disabling all checkpoints (will save final adapters only)"
-        )
-    else:
-        save_strategy = "steps"
-        eval_strategy = "steps"
-        load_best_model_at_end = False  # Keep False for consistency
+    os.makedirs(save_dir, exist_ok=True)
 
     args = TrainingArguments(
-        output_dir=output_dir,
+        output_dir=save_dir,
         num_train_epochs=cfg["num_epochs"],
         max_steps=cfg.get("max_steps", -1),
         per_device_train_batch_size=cfg["batch_size"],
@@ -187,17 +158,12 @@ def train_model(
         warmup_steps=cfg.get("warmup_steps", 100),
         bf16=cfg.get("bf16", True),
         optim=cfg.get("optim", "paged_adamw_8bit"),
-        eval_strategy=eval_strategy,
-        save_strategy=save_strategy,
-        save_on_each_node=False,  # Add this
-        load_best_model_at_end=load_best_model_at_end,  # Add this
+        eval_strategy="steps",
+        save_strategy="steps",
         logging_steps=cfg.get("logging_steps", 25),
-        save_total_limit=(
-            cfg.get("save_total_limit", 2) if not is_fsdp else None
-        ),  # Conditional
+        save_total_limit=cfg.get("save_total_limit", 2),
         report_to="wandb",
         gradient_checkpointing=cfg.get("gradient_checkpointing", False),
-        gradient_checkpointing_kwargs=cfg.get("gradient_checkpointing_kwargs", None),
         ddp_find_unused_parameters=False,
     )
 
@@ -210,7 +176,7 @@ def train_model(
     )
 
     num_gpus = torch.cuda.device_count()
-    print(f"\n🎯 Starting LoRA fine-tuning with {num_gpus} GPU(s)...")
+    print(f"\n🎯 Starting LoRA fine-tuning with {num_gpus} GPU(s) using DDP...")
 
     # Track training duration
     start_time = time.time()
@@ -227,7 +193,7 @@ def train_model(
     )
 
     # Save adapters
-    adapter_dir = os.path.join(output_dir, "lora_adapters")
+    adapter_dir = os.path.join(save_dir, "lora_adapters")
     os.makedirs(adapter_dir, exist_ok=True)
     model.save_pretrained(adapter_dir)
     tokenizer.save_pretrained(adapter_dir)
@@ -238,7 +204,7 @@ def train_model(
         "duration_minutes": round(duration_minutes, 3),
         "duration_seconds": round(duration_seconds, 0),
     }
-    duration_path = os.path.join(output_dir, "training_duration.json")
+    duration_path = os.path.join(save_dir, "training_duration.json")
     with open(duration_path, "w", encoding="utf-8") as f:
         json.dump(duration_info, f, indent=2)
     print(f"⏱️  Saved training duration to {duration_path}")
@@ -260,83 +226,37 @@ def main():
     args = parser.parse_args()
 
     # Load training config
-    if args.cfg_path:
-        cfg = load_config(args.cfg_path)
-    else:
-        cfg = load_config()
+    cfg = load_config(args.cfg_path) if args.cfg_path else load_config()
 
-    # Initialize Accelerator to detect distributed setup
+    # Initialize Accelerator for DDP
     accelerator = Accelerator()
-
-    # Get model name (normalize to lowercase with hyphens)
-    model_name = cfg["base_model"].split("/")[-1].lower()
-
-    # Determine folder name based on distributed setup
-    dist_type = (
-        accelerator.distributed_type.value
-    )  # e.g., "MULTI_GPU", "FSDP", "DEEPSPEED", "NO"
     num_gpus = accelerator.num_processes
 
-    # Determine if we should use quantization
-    use_quantization = dist_type not in [
-        "FSDP",
-        "DEEPSPEED",
-    ]  # FSDP/DeepSpeed handle memory differently
+    # Get model name for folder structure
+    model_name = cfg["base_model"].split("/")[-1].lower()
 
-    # Create descriptive folder name
-    if dist_type == "NO" or num_gpus == 1:
-        config_folder = "accelerate_baseline_1gpu"
-    elif dist_type == "MULTI_GPU":
-        config_folder = f"accelerate_ddp_{num_gpus}gpu"
-    elif dist_type == "FSDP":
-        # Determine FSDP sharding strategy
-        fsdp_plugin = accelerator.state.fsdp_plugin
-        if fsdp_plugin and hasattr(fsdp_plugin, "sharding_strategy"):
-            sharding_strategy = str(fsdp_plugin.sharding_strategy)
-            # Map sharding strategy to ZeRO stage
-            if "FULL_SHARD" in sharding_strategy:
-                config_folder = f"accelerate_fsdp_zero3_{num_gpus}gpu"
-            elif "SHARD_GRAD_OP" in sharding_strategy:
-                config_folder = f"accelerate_fsdp_zero2_{num_gpus}gpu"
-            elif "NO_SHARD" in sharding_strategy:
-                config_folder = f"accelerate_fsdp_noshard_{num_gpus}gpu"
-            else:
-                config_folder = f"accelerate_fsdp_{num_gpus}gpu"
-        else:
-            config_folder = f"accelerate_fsdp_{num_gpus}gpu"
-    elif dist_type == "DEEPSPEED":
-        # Determine DeepSpeed ZeRO stage
-        deepspeed_plugin = accelerator.state.deepspeed_plugin
-        if deepspeed_plugin and hasattr(deepspeed_plugin, "zero_stage"):
-            zero_stage = deepspeed_plugin.zero_stage
-            config_folder = f"accelerate_deepspeed_zero{zero_stage}_{num_gpus}gpu"
-        else:
-            config_folder = f"accelerate_deepspeed_{num_gpus}gpu"
+    # Create output directory: outputs/ddp_{n}gpu/{model_name}/
+    if num_gpus == 1:
+        config_folder = "baseline_1gpu"
     else:
-        # Fallback for any other distributed type
-        config_folder = f"accelerate_{dist_type.lower()}_{num_gpus}gpu"
+        config_folder = f"ddp_{num_gpus}gpu"
 
-    # Output directory: outputs/{config_folder}/{model_name}/
     run_output_dir = os.path.join(OUTPUTS_DIR, config_folder, model_name)
     run_name = f"{config_folder}-{model_name}"
 
-    # Update config with this directory
-    cfg["save_dir"] = run_output_dir
-
-    print(f"\n🔧 Distributed type: {dist_type}")
-    print(f"🔧 Number of processes: {num_gpus}")
+    print(f"\n🔧 Training mode: DDP with {num_gpus} GPU(s)")
     print(f"📁 Output directory: {run_output_dir}")
 
     # Load dataset
     train_data, val_data, _ = load_and_prepare_dataset(cfg)
 
-    # Reuse unified model setup (quantization + LoRA)
+    # Setup model with quantization + LoRA for DDP
     model, tokenizer = setup_model_and_tokenizer(
         cfg,
-        use_4bit=use_quantization,
+        use_4bit=True,
         use_lora=True,
         padding_side="right",
-        device_map=accelerator.local_process_index,
+        device_map={"": accelerator.local_process_index},
     )
 
     # Initialize W&B only on main process
@@ -351,29 +271,23 @@ def main():
                 "lora_r": cfg.get("lora_r", 8),
                 "lora_alpha": cfg.get("lora_alpha", 16),
                 "num_gpus": num_gpus,
-                "distributed_type": dist_type,
+                "training_mode": "DDP",
             },
         )
 
-    train_model(
-        cfg,
-        model,
-        tokenizer,
-        train_data,
-        val_data,
-        save_dir=run_output_dir,
-        accelerator=accelerator,
-    )
+    train_model(cfg, model, tokenizer, train_data, val_data, run_output_dir)
 
-    # Finish the wandb run to allow next experiment to start fresh
+    # Finish W&B run on main process
     if accelerator.is_main_process:
         wandb.finish()
 
-    # Wait for all processes to finish before cleanup
+    # Wait for all processes to complete
     accelerator.wait_for_everyone()
-
-    # Clean up distributed process group
     accelerator.free_memory()
+
+    # Properly destroy the process group before exit
+    if torch.distributed.is_initialized():
+        torch.distributed.destroy_process_group()
 
 
 if __name__ == "__main__":
