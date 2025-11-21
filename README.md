@@ -85,11 +85,11 @@ accelerate launch --config_file code/configs/accelerate_fsdp_zero2_4gpu.yaml cod
 After training, evaluate each model (update the model name in the command below). You set it in the `code/config.yaml` file. Use lowercase for the model name.
 
 ```bash
-# Evaluate DDP with 2 GPUs
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp_2gpu/<model_name>/lora_adapters
+# Evaluate baseline QLoRA model
+python code/evaluate_model.py  --config code/configs/training/qlora.yaml --model_path outputs/baseline_qlora/lora_adapters
 
 # Evaluate DDP with 4 GPUs
-python code/evaluate_qlora.py --adapter_path data/outputs/accelerate_ddp_4gpu/<model_name>/lora_adapters
+python code/evaluate_model.py --model_path data/outputs/accelerate_ddp_4gpu/<model_name>/lora_adapters --config code/configs/training/qlora.yaml
 ```
 
 **Results saved alongside adapters:**
