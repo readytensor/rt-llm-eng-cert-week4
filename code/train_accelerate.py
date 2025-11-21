@@ -121,7 +121,7 @@ def preprocess_samples(examples, tokenizer, task_instruction, max_length):
 # ---------------------------------------------------------------------------
 
 
-def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = None):
+def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = None, accelerator: Accelerator = None):
     """Tokenize datasets, configure Trainer, and run LoRA fine-tuning."""
     task_instruction = cfg["task_instruction"]
 
@@ -152,6 +152,19 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
 
     os.makedirs(output_dir, exist_ok=True)
 
+    # Detect if using FSDP and disable intermediate saves
+    is_fsdp = accelerator and accelerator.distributed_type.value == "FSDP"
+
+    if is_fsdp:
+        save_strategy = "no"
+        eval_strategy = "no"
+        load_best_model_at_end = False
+        print("⚠️  FSDP detected: Disabling all checkpoints (will save final adapters only)")
+    else:
+        save_strategy = "steps"
+        eval_strategy = "steps"
+        load_best_model_at_end = False  # Keep False for consistency
+
     args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=cfg["num_epochs"],
@@ -164,10 +177,12 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
         warmup_steps=cfg.get("warmup_steps", 100),
         bf16=cfg.get("bf16", True),
         optim=cfg.get("optim", "paged_adamw_8bit"),
-        eval_strategy="steps",
-        save_strategy="steps",
+        eval_strategy=eval_strategy,
+        save_strategy=save_strategy,
+        save_on_each_node=False,  # Add this
+        load_best_model_at_end=load_best_model_at_end,  # Add this
         logging_steps=cfg.get("logging_steps", 25),
-        save_total_limit=cfg.get("save_total_limit", 2),
+        save_total_limit=cfg.get("save_total_limit", 2) if not is_fsdp else None,  # Conditional
         report_to="wandb",
         gradient_checkpointing=cfg.get("gradient_checkpointing", False),
         gradient_checkpointing_kwargs=cfg.get("gradient_checkpointing_kwargs", None),
@@ -248,18 +263,41 @@ def main():
     dist_type = accelerator.distributed_type.value  # e.g., "MULTI_GPU", "FSDP", "DEEPSPEED", "NO"
     num_gpus = accelerator.num_processes
 
+    # Determine if we should use quantization
+    use_quantization = dist_type not in ["FSDP", "DEEPSPEED"]  # FSDP/DeepSpeed handle memory differently
+
     # Create descriptive folder name
     if dist_type == "NO" or num_gpus == 1:
         config_folder = "accelerate_baseline_1gpu"
     elif dist_type == "MULTI_GPU":
         config_folder = f"accelerate_ddp_{num_gpus}gpu"
     elif dist_type == "FSDP":
-        config_folder = f"accelerate_fsdp_{num_gpus}gpu"
+        # Determine FSDP sharding strategy
+        fsdp_plugin = accelerator.state.fsdp_plugin
+        if fsdp_plugin and hasattr(fsdp_plugin, 'sharding_strategy'):
+            sharding_strategy = str(fsdp_plugin.sharding_strategy)
+            # Map sharding strategy to ZeRO stage
+            if "FULL_SHARD" in sharding_strategy:
+                config_folder = f"accelerate_fsdp_zero3_{num_gpus}gpu"
+            elif "SHARD_GRAD_OP" in sharding_strategy:
+                config_folder = f"accelerate_fsdp_zero2_{num_gpus}gpu"
+            elif "NO_SHARD" in sharding_strategy:
+                config_folder = f"accelerate_fsdp_noshard_{num_gpus}gpu"
+            else:
+                config_folder = f"accelerate_fsdp_{num_gpus}gpu"
+        else:
+            config_folder = f"accelerate_fsdp_{num_gpus}gpu"
     elif dist_type == "DEEPSPEED":
-        config_folder = f"accelerate_deepspeed_{num_gpus}gpu"
+        # Determine DeepSpeed ZeRO stage
+        deepspeed_plugin = accelerator.state.deepspeed_plugin
+        if deepspeed_plugin and hasattr(deepspeed_plugin, 'zero_stage'):
+            zero_stage = deepspeed_plugin.zero_stage
+            config_folder = f"accelerate_deepspeed_zero{zero_stage}_{num_gpus}gpu"
+        else:
+            config_folder = f"accelerate_deepspeed_{num_gpus}gpu"
     else:
         # Fallback for any other distributed type
-        config_folder = f"{dist_type.lower()}_{num_gpus}gpu"
+        config_folder = f"accelerate_{dist_type.lower()}_{num_gpus}gpu"
 
     # Output directory: outputs/{config_folder}/{model_name}/
     run_output_dir = os.path.join(OUTPUTS_DIR, config_folder, model_name)
@@ -278,7 +316,7 @@ def main():
     # Reuse unified model setup (quantization + LoRA)
     model, tokenizer = setup_model_and_tokenizer(
         cfg,
-        use_4bit=True,
+        use_4bit=use_quantization,
         use_lora=True,
         padding_side="right",
         device_map=accelerator.local_process_index,
@@ -307,6 +345,7 @@ def main():
         train_data,
         val_data,
         save_dir=run_output_dir,
+        accelerator=accelerator,
     )
 
     # Finish the wandb run to allow next experiment to start fresh
