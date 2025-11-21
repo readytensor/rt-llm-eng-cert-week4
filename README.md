@@ -59,19 +59,19 @@ From the repository root:
 
 ```bash
 # Single GPU baseline
-accelerate launch --config_file code/configs/accelerate_baseline_1gpu.yaml code/train_ddp_accelerate.py
+accelerate launch --config_file code/configs/accelerate_baseline_1gpu.yaml code/train_accelerate.py
 
 # DDP with 2 GPUs
-accelerate launch --config_file code/configs/accelerate_ddp_2gpu.yaml code/train_ddp_accelerate.py
+accelerate launch --config_file code/configs/accelerate_ddp_2gpu.yaml code/train_accelerate.py
 
 # DDP with 4 GPUs
-accelerate launch --config_file code/configs/accelerate_ddp_4gpu.yaml code/train_ddp_accelerate.py
+accelerate launch --config_file code/configs/accelerate_ddp_4gpu.yaml code/train_accelerate.py
 
 # FSDP with 2 GPUs
-accelerate launch --config_file code/configs/accelerate_fsdp_zero2_2gpu.yaml code/train_ddp_accelerate.py
+accelerate launch --config_file code/configs/accelerate_fsdp_zero2_2gpu.yaml code/train_accelerate.py
 
 # FSDP with 4 GPUs
-accelerate launch --config_file code/configs/accelerate_fsdp_zero2_4gpu.yaml code/train_ddp_accelerate.py
+accelerate launch --config_file code/configs/accelerate_fsdp_zero2_4gpu.yaml code/train_accelerate.py
 ```
 
 **Outputs saved to:**
