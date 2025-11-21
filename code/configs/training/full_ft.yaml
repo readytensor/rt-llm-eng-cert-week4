@@ -15,7 +15,7 @@ dataset:
     output: summary
   type: completion
   splits:
-    train: all
+    train: 100
     validation: 200
     test: 200
   seed: 42

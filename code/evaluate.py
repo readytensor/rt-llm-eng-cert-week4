@@ -1,6 +1,6 @@
 """
-evaluate_qlora.py
-Evaluate a fine-tuned LoRA model on the SAMSum dataset.
+evaluate.py
+Evaluate a fine-tuned model (LoRA adapters or full model) on the SAMSum dataset.
 Reuses shared utilities for config, dataset loading, and inference.
 """
 
@@ -10,6 +10,7 @@ import argparse
 import torch
 from dotenv import load_dotenv
 from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from utils.config_utils import load_config
 from utils.data_utils import load_and_prepare_dataset
@@ -20,58 +21,107 @@ load_dotenv()
 
 
 # ---------------------------------------------------------------------------
+# Model Detection and Loading
+# ---------------------------------------------------------------------------
+
+
+def detect_model_type(model_path: str):
+    """Detect if path contains LoRA adapters or full fine-tuned model."""
+    adapter_config = os.path.join(model_path, "adapter_config.json")
+    model_config = os.path.join(model_path, "config.json")
+    
+    if os.path.exists(adapter_config):
+        return "lora_adapters"
+    elif os.path.exists(model_config):
+        return "full_model"
+    else:
+        raise ValueError(
+            f"Could not detect model type at {model_path}. "
+            f"Expected either adapter_config.json (LoRA) or config.json (full model)."
+        )
+
+
+def load_model_for_evaluation(cfg, model_path: str):
+    """Load model based on detected type (LoRA adapters or full model)."""
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model_type = detect_model_type(model_path)
+    
+    if model_type == "lora_adapters":
+        print(f"\n📦 Detected LoRA adapters at: {model_path}")
+        
+        # Read base model from adapter config
+        adapter_config_path = os.path.join(model_path, "adapter_config.json")
+        with open(adapter_config_path, 'r', encoding='utf-8') as f:
+            adapter_config = json.load(f)
+            base_model_name = adapter_config.get("base_model_name_or_path")
+        
+        print(f"🔧 Loading base model: {base_model_name}")
+        
+        # Load base model with quantization
+        model, tokenizer = setup_model_and_tokenizer(
+            {"base_model": base_model_name},
+            use_4bit=True,
+            use_lora=False,
+            padding_side="left",
+            device_map=device
+        )
+        
+        # Load LoRA adapters
+        print(f"🔧 Loading LoRA adapters...")
+        model = PeftModel.from_pretrained(model, model_path)
+        model.eval()
+        print(f"✅ Successfully loaded LoRA model")
+        
+        return model, tokenizer, base_model_name
+        
+    else:  # full_model
+        print(f"\n📦 Detected full fine-tuned model at: {model_path}")
+        
+        # Load tokenizer and model directly from path
+        print(f"🔧 Loading model and tokenizer...")
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        tokenizer.padding_side = "left"
+        
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=torch.bfloat16,
+            device_map="auto"
+        )
+        model.eval()
+        print(f"✅ Successfully loaded full fine-tuned model")
+        
+        # Extract model name from path for results
+        model_name = model_path
+        
+        return model, tokenizer, model_name
+
+
+# ---------------------------------------------------------------------------
 # Evaluation
 # ---------------------------------------------------------------------------
 
 
-def evaluate_peft_model(cfg, adapter_path: str):
-    """Load base model, attach LoRA adapters, and evaluate."""
+def evaluate_model(cfg, model_path: str):
+    """Load model (LoRA or full) and evaluate on validation set."""
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # Load appropriate model type
+    model, tokenizer, model_name = load_model_for_evaluation(cfg, model_path)
 
-    # Read the base model from adapter config
-    adapter_config_path = os.path.join(adapter_path, "adapter_config.json")
-    if os.path.exists(adapter_config_path):
-        with open(adapter_config_path, 'r', encoding='utf-8') as f:
-            adapter_config = json.load(f)
-            base_model_name = adapter_config.get("base_model_name_or_path")
-            print(f"Detected base model from adapter config: {base_model_name}")
-            # Override the config with the correct base model
-            cfg["base_model"] = base_model_name
-    else:
-        print("Warning: Could not find adapter_config.json, using model from config.yaml")
-
-
-    # Results will be saved in the parent directory of the adapter
-    results_dir = os.path.dirname(adapter_path)
-
-    # ----------------------------
-    # Model & Tokenizer
-    # ----------------------------
-    print(f"\nLoading base model: {cfg['base_model']}...")
-    model, tokenizer = setup_model_and_tokenizer(
-        cfg, use_4bit=True, use_lora=False, padding_side="left", device_map=device
-    )
-
-    print(f"Loading fine-tuned LoRA adapters from: {adapter_path}")
-    model = PeftModel.from_pretrained(model, adapter_path)
-    model.eval()
-    tokenizer.padding_side = "left"
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = model.to(device)
+    # Results will be saved in the parent directory of the model
+    results_dir = os.path.dirname(model_path)
 
     # ----------------------------
     # Dataset
     # ----------------------------
-    print("\nLoading dataset...")
+    print("\n📚 Loading dataset...")
     _, val_data, _ = load_and_prepare_dataset(cfg)
     print(f"Validation set size: {len(val_data)} samples")
 
     # ----------------------------
     # Inference
     # ----------------------------
-    print("\nGenerating summaries...")
+    print("\n🔮 Generating summaries...")
     preds = generate_predictions(
         model=model,
         tokenizer=tokenizer,
@@ -83,7 +133,7 @@ def evaluate_peft_model(cfg, adapter_path: str):
     # ----------------------------
     # Evaluation
     # ----------------------------
-    print("\nComputing ROUGE metrics...")
+    print("\n📊 Computing ROUGE metrics...")
     scores = compute_rouge(preds, val_data)
 
     print("\n" + "=" * 50)
@@ -107,8 +157,8 @@ def evaluate_peft_model(cfg, adapter_path: str):
         "rouge2": scores["rouge2"],
         "rougeL": scores["rougeL"],
         "num_samples": len(val_data),
-        "base_model": cfg["base_model"],
-        "adapter_path": adapter_path,
+        "model_name": model_name,
+        "model_path": model_path,
     }
 
     with open(results_path, "w", encoding="utf-8") as f:
@@ -139,17 +189,18 @@ def evaluate_peft_model(cfg, adapter_path: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Evaluate LoRA fine-tuned model on SAMSum"
+        description="Evaluate fine-tuned model (LoRA adapters or full model) on SAMSum"
     )
     parser.add_argument(
-        "--adapter_path",
-        "-a",
+        "--model_path",
+        "-m",
         type=str,
         required=True,
-        help="Path to LoRA adapter directory (e.g., data/outputs/accelerate_ddp/llama-3.2-8b-2-gpus/lora_adapters)",
+        help="Path to LoRA adapters OR full fine-tuned model directory",
     )
     parser.add_argument(
         "--config",
+        "-c",
         type=str,
         default=None,
         help="Path to config file (optional)",
@@ -164,7 +215,7 @@ def main():
         cfg = load_config()
 
     # Evaluate
-    scores, preds = evaluate_peft_model(cfg, args.adapter_path)
+    scores, preds = evaluate_model(cfg, args.model_path)
 
     print("\n✅ Evaluation complete.")
     print("\nSample prediction:")

@@ -16,3 +16,6 @@ PyYAML
 tqdm
 
 rouge_score
+
+
+inquirer
