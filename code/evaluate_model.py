@@ -197,7 +197,7 @@ def main():
         help="Path to LoRA adapters OR full fine-tuned model directory",
     )
     parser.add_argument(
-        "--config",
+        "--cfg_path",
         "-c",
         type=str,
         default=None,
@@ -207,8 +207,8 @@ def main():
     args = parser.parse_args()
 
     # Load config
-    if args.config:
-        cfg = load_config(args.config)
+    if args.cfg_path:
+        cfg = load_config(args.cfg_path)
     else:
         cfg = load_config()
 
