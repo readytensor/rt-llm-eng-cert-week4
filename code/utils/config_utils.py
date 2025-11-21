@@ -4,10 +4,10 @@ Shared utilities for loading and managing YAML configuration files.
 """
 
 import yaml
-from paths import CONFIG_FILE_PATH
+from paths import QLORA_CFG_FILE_PATH
 
 
-def load_config(config_path: str = CONFIG_FILE_PATH):
+def load_config(config_path: str = QLORA_CFG_FILE_PATH):
     """
     Load and parse a YAML configuration file.
 
