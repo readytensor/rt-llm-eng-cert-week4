@@ -4,6 +4,8 @@ Fully integrated with shared utilities and config.yaml.
 """
 
 import os
+import json
+import time
 import wandb
 import torch
 from dotenv import load_dotenv
@@ -172,12 +174,37 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str = Non
     )
 
     print("\n🎯 Starting LoRA fine-tuning...")
-    trainer.train()
-    print("\n✅ Training complete!")
 
-    model.save_pretrained(output_dir)
-    tokenizer.save_pretrained(output_dir)
-    print(f"💾 Saved LoRA adapters to {output_dir}")
+    # Track training duration
+    start_time = time.time()
+    trainer.train()
+    end_time = time.time()
+
+    # Calculate duration in minutes
+    duration_seconds = end_time - start_time
+    duration_minutes = duration_seconds / 60.0
+
+    print("\n✅ Training complete!")
+    print(
+        f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)"
+    )
+
+    # Save adapters
+    lora_adapters_dir = os.path.join(output_dir, "lora_adapters")
+    os.makedirs(lora_adapters_dir, exist_ok=True)
+    model.save_pretrained(lora_adapters_dir)
+    tokenizer.save_pretrained(lora_adapters_dir)
+    print(f"💾 Saved LoRA adapters to {lora_adapters_dir}")
+
+    # Save training duration
+    duration_info = {
+        "duration_minutes": round(duration_minutes, 3),
+        "duration_seconds": round(duration_seconds, 0),
+    }
+    duration_path = os.path.join(output_dir, "training_duration.json")
+    with open(duration_path, "w", encoding="utf-8") as f:
+        json.dump(duration_info, f, indent=2)
+    print(f"⏱️  Saved training duration to {duration_path}")
 
 
 # ---------------------------------------------------------------------------
