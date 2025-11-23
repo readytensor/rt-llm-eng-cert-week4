@@ -12,11 +12,12 @@ lora_target_modules:
   - o_proj
 
 datasets:
-  - path: samsum
-    type: huggingface
-    split: train
-    field_dialogue: dialogue
-    hf_use_auth_token: true
+  - path: knkarthick/samsum
+    cache_dir: data/datasets
+    field_map:
+      input: dialogue
+      output: summary
+    type: completion
 
 sequence_len: 512
 sample_packing: true
