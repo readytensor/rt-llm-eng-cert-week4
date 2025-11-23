@@ -256,7 +256,7 @@ def main():
         use_4bit=True,
         use_lora=True,
         padding_side="right",
-        device_map={"": accelerator.local_process_index},
+        device_map=accelerator.local_process_index,
     )
 
     # Initialize W&B only on main process
