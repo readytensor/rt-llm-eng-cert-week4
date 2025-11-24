@@ -17,7 +17,7 @@ from utils.data_utils import load_and_prepare_dataset
 from utils.model_utils import setup_model_and_tokenizer
 from utils.inference_utils import generate_predictions, compute_rouge
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 # ---------------------------------------------------------------------------

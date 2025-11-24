@@ -28,7 +28,7 @@ from paths import OUTPUTS_DIR
 # Environment Setup
 # ---------------------------------------------------------------------------
 
-load_dotenv()
+load_dotenv(override=True)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
