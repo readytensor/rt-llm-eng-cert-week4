@@ -1,0 +1,8 @@
+{
+  "rouge1": 0.5062586548603141,
+  "rouge2": 0.28645444018113303,
+  "rougeL": 0.4346911388374986,
+  "num_samples": 200,
+  "model_name": "meta-llama/Llama-3.2-3B-Instruct",
+  "model_path": "data/outputs/baseline_qlora/lora_adapters"
+}
