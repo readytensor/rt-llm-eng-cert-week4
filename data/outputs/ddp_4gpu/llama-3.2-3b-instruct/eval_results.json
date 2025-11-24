@@ -1,0 +1,8 @@
+{
+  "rouge1": 0.511962394322785,
+  "rouge2": 0.2855906707898547,
+  "rougeL": 0.4390987110897714,
+  "num_samples": 200,
+  "model_name": "meta-llama/Llama-3.2-3B-Instruct",
+  "model_path": "data/outputs/ddp_4gpu/llama-3.2-3b-instruct/lora_adapters"
+}
