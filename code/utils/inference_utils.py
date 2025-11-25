@@ -62,7 +62,8 @@ def generate_predictions(
     preds = []
     for i in tqdm(range(0, len(prompts), batch_size), desc="Generating summaries"):
         batch = prompts[i : i + batch_size]
-        outputs = pipe(batch, max_new_tokens=max_new_tokens, return_full_text=False)
+        # Explicitly pass do_sample=False to override model's generation_config.json
+        outputs = pipe(batch, max_new_tokens=max_new_tokens, return_full_text=False, do_sample=False)
         preds.extend([o[0]["generated_text"].strip() for o in outputs])
 
     return preds
