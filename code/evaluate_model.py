@@ -76,11 +76,21 @@ def load_model_for_evaluation(cfg, model_path: str):
         return model, tokenizer, base_model_name
 
     else:  # full_model
-        print("\n📦 Detected full fine-tuned model at: {model_path}")
+        print(f"\n📦 Detected full fine-tuned model at: {model_path}")
 
         # Load tokenizer and model directly from path
         print("🔧 Loading model and tokenizer...")
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
+        
+        # If loading from a checkpoint directory where config is a dict, 
+        # explicitly load the base model's tokenizer config first or rely on slow tokenizer.
+        # The error 'dict object has no attribute model_type' usually happens with fast tokenizers
+        # when loading from a directory that doesn't have a full config.json structure expected by AutoTokenizer.
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
+        except Exception:
+             # Fallback: Load from base model, then apply tokenizer files from path
+            tokenizer = AutoTokenizer.from_pretrained(cfg["base_model"])
+            
         tokenizer.padding_side = "left"
 
         model = AutoModelForCausalLM.from_pretrained(
