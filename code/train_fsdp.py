@@ -227,6 +227,20 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
             json.dump(duration_info, f, indent=2)
         print(f"⏱️  Saved training duration to {duration_path}")
 
+        # Print trainable parameters
+    total_params = 0
+    trainable_params = 0
+    for name, param in model.named_parameters():
+        total_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    
+    print(f"\n📊 Model Parameter Summary:")
+    print(f"   Total parameters: {total_params:,}")
+    print(f"   Trainable parameters: {trainable_params:,}")
+    print(f"   Trainable %: {100 * trainable_params / total_params:.2f}%")
+
+
 
 # ---------------------------------------------------------------------------
 # Main
@@ -297,6 +311,9 @@ def main():
         padding_side="right",
         device_map=None,  # Let FSDP handle device placement
     )
+    
+
+    
 
     # Initialize W&B only on main process
     if accelerator.is_main_process:
