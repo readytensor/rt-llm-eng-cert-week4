@@ -208,8 +208,9 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     
     os.makedirs(model_dir, exist_ok=True)
     
-    # Save model - trainer.save_model handles FSDP state dict consolidation
-    trainer.save_model(model_dir)
+    # Save model with consolidated FSDP state dict
+    state_dict = trainer.accelerator.get_state_dict(trainer.model)
+    trainer.accelerator.unwrap_model(trainer.model).save_pretrained(model_dir, state_dict=state_dict, safe_serialization=True)
     
     # Only save tokenizer and metadata on main process to avoid corruption
     if trainer.is_world_process_zero():
