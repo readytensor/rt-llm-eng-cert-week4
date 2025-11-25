@@ -161,12 +161,12 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         bf16=cfg.get("bf16", True),
         optim=cfg.get("optim", "adamw_torch"),
         # Disable intermediate checkpoints for FSDP (save only final adapters)
-        eval_strategy="no",
+        eval_strategy="steps",
         save_strategy="no",
+        eval_steps=cfg.get("eval_steps", 25),
         logging_steps=cfg.get("logging_steps", 25),
         report_to="wandb",
         gradient_checkpointing=cfg.get("gradient_checkpointing", False),
-        fsdp="full_shard auto_wrap",  # Enable FSDP with full sharding
         fsdp_transformer_layer_cls_to_wrap=cfg.get(
             "fsdp_transformer_layer_cls_to_wrap", None
         ),
