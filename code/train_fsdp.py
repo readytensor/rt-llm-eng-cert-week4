@@ -184,6 +184,19 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     print(f"\n🎯 Starting fine-tuning with {num_gpus} GPU(s) using FSDP...")
     print("⚠️  Note: Intermediate checkpoints disabled (will save final model only)")
 
+    total_params = 0
+    trainable_params = 0
+    for name, param in model.named_parameters():
+        total_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    
+    print(f"\n📊 Model Parameter Summary:")
+    print(f"   Total parameters: {total_params:,}")
+    print(f"   Trainable parameters: {trainable_params:,}")
+    print(f"   Trainable %: {100 * trainable_params / total_params:.2f}%")
+
+
     # Track training duration
     start_time = time.time()
     trainer.train()
@@ -228,17 +241,6 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         print(f"⏱️  Saved training duration to {duration_path}")
 
         # Print trainable parameters
-    total_params = 0
-    trainable_params = 0
-    for name, param in model.named_parameters():
-        total_params += param.numel()
-        if param.requires_grad:
-            trainable_params += param.numel()
-    
-    print(f"\n📊 Model Parameter Summary:")
-    print(f"   Total parameters: {total_params:,}")
-    print(f"   Trainable parameters: {trainable_params:,}")
-    print(f"   Trainable %: {100 * trainable_params / total_params:.2f}%")
 
 
 
