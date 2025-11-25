@@ -94,7 +94,7 @@ def load_model_for_evaluation(cfg, model_path: str):
         tokenizer.padding_side = "left"
 
         model = AutoModelForCausalLM.from_pretrained(
-            model_path, torch_dtype=torch.bfloat16, device_map="auto"
+            model_path, torch_dtype=torch.bfloat16, device_map={"": 0}  # Load on single GPU to avoid multi-GPU sync issues
         )
         model.eval()
         print("✅ Successfully loaded full fine-tuned model")
