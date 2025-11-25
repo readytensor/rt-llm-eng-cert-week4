@@ -208,21 +208,23 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     
     os.makedirs(model_dir, exist_ok=True)
     
-    # Save model (Trainer handles FSDP saving if accelerator is available in trainer)
-    # trainer.save_model() automatically unwraps and saves correctly for FSDP
+    # Save model - trainer.save_model handles FSDP state dict consolidation
     trainer.save_model(model_dir)
-    tokenizer.save_pretrained(model_dir)
-    print(f"💾 Saved {save_message} to {model_dir}")
+    
+    # Only save tokenizer and metadata on main process to avoid corruption
+    if trainer.is_world_process_zero():
+        tokenizer.save_pretrained(model_dir)
+        print(f"💾 Saved {save_message} to {model_dir}")
 
-    # Save training duration
-    duration_info = {
-        "duration_minutes": round(duration_minutes, 3),
-        "duration_seconds": round(duration_seconds, 0),
-    }
-    duration_path = os.path.join(save_dir, "training_duration.json")
-    with open(duration_path, "w", encoding="utf-8") as f:
-        json.dump(duration_info, f, indent=2)
-    print(f"⏱️  Saved training duration to {duration_path}")
+        # Save training duration
+        duration_info = {
+            "duration_minutes": round(duration_minutes, 3),
+            "duration_seconds": round(duration_seconds, 0),
+        }
+        duration_path = os.path.join(save_dir, "training_duration.json")
+        with open(duration_path, "w", encoding="utf-8") as f:
+            json.dump(duration_info, f, indent=2)
+        print(f"⏱️  Saved training duration to {duration_path}")
 
 
 # ---------------------------------------------------------------------------
