@@ -207,7 +207,10 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         save_message = "full model"
     
     os.makedirs(model_dir, exist_ok=True)
-    model.save_pretrained(model_dir)
+    
+    # Save model (Trainer handles FSDP saving if accelerator is available in trainer)
+    # trainer.save_model() automatically unwraps and saves correctly for FSDP
+    trainer.save_model(model_dir)
     tokenizer.save_pretrained(model_dir)
     print(f"💾 Saved {save_message} to {model_dir}")
 
