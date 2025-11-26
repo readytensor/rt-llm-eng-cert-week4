@@ -156,7 +156,7 @@ python code/evaluate_model.py \
 # Full FT
 python code/evaluate_model.py \
     --cfg_path code/configs/training/full_ft.yaml \
-    --model_path data/outputs/fsdp_4gpu_zero3/<model-name>/final_model
+    --model_path data/outputs/fsdp_zero3_4gpu_full/<model-name>/final_model
 ```
 
 **Evaluation outputs:** Same structure (in model path directory)

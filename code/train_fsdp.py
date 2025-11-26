@@ -126,7 +126,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     """Tokenize datasets, configure Trainer, and run fine-tuning with FSDP."""
     task_instruction = cfg["task_instruction"]
 
-    print("\n📚 Tokenizing datasets...")
+    print("\nTokenizing datasets...")
     tokenized_train = train_data.map(
         lambda e: preprocess_samples(
             e, tokenizer, task_instruction, cfg["sequence_len"]
@@ -167,9 +167,6 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         logging_steps=cfg.get("logging_steps", 25),
         report_to="wandb",
         gradient_checkpointing=cfg.get("gradient_checkpointing", False),
-        fsdp_transformer_layer_cls_to_wrap=cfg.get(
-            "fsdp_transformer_layer_cls_to_wrap", None
-        ),
     )
 
     trainer = Trainer(
@@ -181,7 +178,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     )
 
     num_gpus = torch.cuda.device_count()
-    print(f"\n🎯 Starting fine-tuning with {num_gpus} GPU(s) using FSDP...")
+    print(f"\nStarting fine-tuning with {num_gpus} GPU(s) using FSDP...")
     print("⚠️  Note: Intermediate checkpoints disabled (will save final model only)")
 
     total_params = 0
@@ -191,7 +188,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         if param.requires_grad:
             trainable_params += param.numel()
     
-    print(f"\n📊 Model Parameter Summary:")
+    print(f"\nModel Parameter Summary:")
     print(f"   Total parameters: {total_params:,}")
     print(f"   Trainable parameters: {trainable_params:,}")
     print(f"   Trainable %: {100 * trainable_params / total_params:.2f}%")
@@ -208,7 +205,7 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
 
     print("\n✅ Training complete!")
     print(
-        f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)"
+        f"Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)"
     )
 
     # Save model/adapters with appropriate folder name
