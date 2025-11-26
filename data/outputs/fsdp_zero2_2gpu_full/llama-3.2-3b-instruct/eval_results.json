@@ -1,0 +1,8 @@
+{
+  "rouge1": 0.526886981768351,
+  "rouge2": 0.29947023472908374,
+  "rougeL": 0.4514311356554287,
+  "num_samples": 200,
+  "model_name": "data/outputs/fsdp_zero2_2gpu_full/llama-3.2-3b-instruct/final_model",
+  "model_path": "data/outputs/fsdp_zero2_2gpu_full/llama-3.2-3b-instruct/final_model"
+}
