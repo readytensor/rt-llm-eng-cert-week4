@@ -68,6 +68,7 @@ lora_target_modules:
 # ==============================================
 # Training
 # ==============================================
+output_dir: ./data/outputs/axolotl/llama-3.2-1b-instruct-qlora-deepspeed
 num_epochs: 1
 learning_rate: 2e-4
 micro_batch_size: 2          # was batch_size: 2
