@@ -161,7 +161,9 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         bf16=cfg.get("bf16", True),
         optim=cfg.get("optim", "adamw_torch"),
         # Disable intermediate checkpoints for DeepSpeed (save only final model)
-        save_strategy="no",
+        eval_strategy=cfg.get("eval_strategy", "no"),
+        eval_steps=cfg.get("eval_steps", 25),
+        save_strategy=cfg.get("save_strategy", "no"),
         logging_steps=cfg.get("logging_steps", 25),
         report_to="wandb",
         gradient_checkpointing=cfg.get("gradient_checkpointing", False),
