@@ -237,7 +237,6 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
             json.dump(duration_info, f, indent=2)
         print(f"⏱️  Saved training duration to {duration_path}")
 
-        # Print trainable parameters
 
 
 

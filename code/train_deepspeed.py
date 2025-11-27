@@ -207,12 +207,8 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     
     os.makedirs(model_dir, exist_ok=True)
     
-    # Save model with consolidated DeepSpeed state dict
-    # Use model_wrapped to access the DeepSpeed engine for state dict retrieval
-    model_to_save = trainer.model_wrapped if hasattr(trainer, "model_wrapped") else trainer.model
-    state_dict = trainer.accelerator.get_state_dict(model_to_save)
-    trainer.accelerator.unwrap_model(trainer.model).save_pretrained(model_dir, state_dict=state_dict, safe_serialization=True)
 
+    trainer.save_model(model_dir)
     # Only save tokenizer and metadata on main process to avoid corruption
     if trainer.is_world_process_zero():
         tokenizer.save_pretrained(model_dir)
