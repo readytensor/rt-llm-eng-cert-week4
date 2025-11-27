@@ -192,11 +192,6 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
     duration_seconds = end_time - start_time
     duration_minutes = duration_seconds / 60.0
 
-    print("\n✅ Training complete!")
-    print(
-        f"⏱️  Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)"
-    )
-
     # Save model/adapters with appropriate folder name
     if use_lora:
         model_dir = os.path.join(save_dir, "lora_adapters")
@@ -205,24 +200,26 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         model_dir = os.path.join(save_dir, "final_model")
         save_message = "full model"
     
-    os.makedirs(model_dir, exist_ok=True)
-    
-
+    # Save model using Trainer's built-in method
+    # For DeepSpeed ZeRO-3, this works when "stage3_gather_16bit_weights_on_model_save": true
+    # is set in the DeepSpeed config (see configs/deepspeed/zero3.json)
     trainer.save_model(model_dir)
-    # Only save tokenizer and metadata on main process to avoid corruption
+    
+    # Only print and save metadata on main process
     if trainer.is_world_process_zero():
-        tokenizer.save_pretrained(model_dir)
+        print("\n✅ Training complete!")
+        print(f"Training duration: {duration_minutes:.2f} minutes ({duration_seconds:.2f} seconds)")
         print(f"💾 Saved {save_message} to {model_dir}")
 
-    # Save training duration
-    duration_info = {
-        "duration_minutes": round(duration_minutes, 3),
-        "duration_seconds": round(duration_seconds, 0),
-    }
-    duration_path = os.path.join(save_dir, "training_duration.json")
-    with open(duration_path, "w", encoding="utf-8") as f:
-        json.dump(duration_info, f, indent=2)
-    print(f"⏱️  Saved training duration to {duration_path}")
+        # Save training duration
+        duration_info = {
+            "duration_minutes": round(duration_minutes, 3),
+            "duration_seconds": round(duration_seconds, 0),
+        }
+        duration_path = os.path.join(save_dir, "training_duration.json")
+        with open(duration_path, "w", encoding="utf-8") as f:
+            json.dump(duration_info, f, indent=2)
+        print(f"⏱️  Saved training duration to {duration_path}")
 
 
 # ---------------------------------------------------------------------------
