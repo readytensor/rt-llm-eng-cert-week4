@@ -82,12 +82,6 @@ optim: paged_adamw_8bit
 gradient_checkpointing: true
 
 # ==============================================
-# Accelerate
-# ==============================================
-accelerate:
-  num_processes: 1
-
-# ==============================================
 # Output & Logging
 # ==============================================
 save_dir_name: baseline_qlora
