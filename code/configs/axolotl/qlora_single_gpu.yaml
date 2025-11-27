@@ -1,0 +1,89 @@
+# ==============================================
+# Model Configuration
+# ==============================================
+base_model: meta-llama/Llama-3.2-1B-Instruct
+trust_remote_code: true
+strict: false
+special_tokens:
+  pad_token: "<|end_of_text|>"
+adapter: qlora
+use_peft: true
+
+# Use generic tokenizer loader
+tokenizer_type: AutoTokenizer
+
+# ==============================================
+# Dataset
+# ==============================================
+datasets:
+  - path: knkarthick/samsum
+    split: train
+    cache_dir: ../data/datasets
+    type:
+      system_prompt: ""
+      field_system: system        # not present in samsum; left empty
+      field_instruction: dialogue
+      field_output: summary
+      format: "[INST] {instruction} [/INST]"
+      no_input_format: "[INST] {instruction} [/INST]"
+    seed: 42
+
+test_datasets:
+  - path: knkarthick/samsum
+    split: validation
+    cache_dir: ../data/datasets
+    type:
+      system_prompt: ""
+      field_system: system
+      field_instruction: dialogue
+      field_output: summary
+      format: "[INST] {instruction} [/INST]"
+      no_input_format: "[INST] {instruction} [/INST]"
+
+
+task_instruction: >
+  You are a helpful assistant who writes concise, factual summaries of conversations.
+  Summarize the following conversation into a single sentence.
+
+# ==============================================
+# Quantization (QLoRA)
+# ==============================================
+load_in_4bit: true
+bnb_4bit_quant_type: nf4
+bnb_4bit_use_double_quant: true
+bnb_4bit_compute_dtype: bfloat16
+
+# ==============================================
+# LoRA
+# ==============================================
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.1
+lora_target_modules:
+  - q_proj
+  - v_proj
+
+
+# ==============================================
+# Training
+# ==============================================
+num_epochs: 1
+learning_rate: 2e-4
+micro_batch_size: 2          # was batch_size: 2
+gradient_accumulation_steps: 8
+sequence_len: 512
+lr_scheduler: cosine
+warmup_steps: 50
+bf16: true
+logging_steps: 25
+save_steps: 100
+save_total_limit: 2
+optim: paged_adamw_8bit
+gradient_checkpointing: true
+
+# ==============================================
+# Output & Logging
+# ==============================================
+save_dir_name: baseline_qlora
+wandb_project: llama3_samsum
+wandb_run_name: lora-finetuning-default-hps
