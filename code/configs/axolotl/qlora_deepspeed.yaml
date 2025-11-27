@@ -8,7 +8,7 @@ special_tokens:
   pad_token: "<|end_of_text|>"
 adapter: qlora
 use_peft: true
-deepspeed: zero2.json
+deepspeed: code/configs/deepspeed/zero2.json
 
 # Use generic tokenizer loader
 tokenizer_type: AutoTokenizer
