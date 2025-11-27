@@ -206,9 +206,15 @@ def train_model(cfg, model, tokenizer, train_data, val_data, save_dir: str, use_
         save_message = "full model"
     
     os.makedirs(model_dir, exist_ok=True)
-    model.save_pretrained(model_dir)
-    tokenizer.save_pretrained(model_dir)
-    print(f"💾 Saved {save_message} to {model_dir}")
+    
+    # Save model with consolidated DeepSpeed state dict
+    state_dict = trainer.accelerator.get_state_dict(trainer.model)
+    trainer.accelerator.unwrap_model(trainer.model).save_pretrained(model_dir, state_dict=state_dict, safe_serialization=True)
+
+    # Only save tokenizer and metadata on main process to avoid corruption
+    if trainer.is_world_process_zero():
+        tokenizer.save_pretrained(model_dir)
+        print(f"💾 Saved {save_message} to {model_dir}")
 
     # Save training duration
     duration_info = {
